@@ -409,6 +409,50 @@ export class Connection {
     }
 
     /**
+     * @param {string} direction - 'in' or 'out'
+     * @param {number} epAddress
+     * @returns ${Promise<boolean>}
+     */
+    async isEndpointHalted(direction, epAddress) {
+        const index = direction === 'in' 
+            ? epAddress | 0x80 
+            : epAddress & ~0x80;
+        
+        const result = await this.device.controlTransferIn({
+            requestType: 'standard',
+            recipient: 'endpoint',
+            request: 0x00,      // GET_STATUS
+            value: 0x0000,
+            index: index
+        }, 2);
+        
+        const status = new Uint16Array(result.data.buffer)[0];
+        return (status & 0x0001) !== 0;  // bit 0 = ENDPOINT_HALT
+    }
+
+    /**
+     * @returns {Promise<void>}
+     */
+    async checkAndClearHalts() {
+        try {
+            if (this.isEndpointHalted('in', this.inEp)) {
+                console.warn('Endpoint is halted, attempting to clear halt condition');
+
+                await this.device.clearHalt('in', this.inEp);
+                console.log('Halt condition cleared');
+            }
+            if (this.isEndpointHalted('out', this.outEp)) {
+                console.warn('OUT Endpoint is halted, attempting to clear halt condition');
+
+                await this.device.clearHalt('out', this.outEp);
+                console.log('OUT Halt condition cleared');
+            }
+        } catch (e) {
+            console.error('Error while checking/clearing halt condition:', e);
+        }
+    }
+
+    /**
      * @param {number} bufSize
      * @param {boolean} check
      * @returns {Promise<Uint8Array>}
@@ -423,6 +467,7 @@ export class Connection {
             console.log('Bulk read completed');
             
             if (result.status === 'stall') {
+                // Linux/macOS
                 // This is a hardware stall clear.  INTERFACE_RESET must still
                 // be sent to clear the protocol stall condition.  This will
                 // happen when GET_CMD_STATUS is queried after this error is
@@ -442,6 +487,8 @@ export class Connection {
             return data.slice(0, bufSize);
         } catch (e) {
             console.error('Bulk read error:', e);
+            // Windows stall path
+            //await this.checkAndClearHalts();
             throw new UsbError(
                 `Error from device (${e.message})`,
                 this.target,
@@ -460,6 +507,7 @@ export class Connection {
             const result = await this.device.transferOut(this.outEp, data);
             
             if (result.status === 'stall') {
+                // Linux/macOS
                 // This is a hardware stall clear.  INTERFACE_RESET must still
                 // be sent to clear the protocol stall condition.  This will
                 // happen when GET_CMD_STATUS is queried after this error is
@@ -478,6 +526,9 @@ export class Connection {
        
             return result.bytesWritten;
         } catch (e) {
+            console.error('Bulk write error:', e);
+            // Windows stall path
+            //await this.checkAndClearHalts();
             throw new UsbError(
                 `Error from device (${e.message})`,
                 this.target,

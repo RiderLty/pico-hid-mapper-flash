@@ -501,4 +501,27 @@ export class Picoboot {
             }
         }
     }
+
+    /**
+     * @param {number} flags
+     * @param {number} p0
+     * @param {number} p1
+     * @param {number} delayMs
+     * @returns {Promise<void>}
+     */
+    async rebootRp2350(flags, p0, p1, delayMs) {
+        const wasConnected = this.isConnected();
+
+        if (!wasConnected) {
+            await this.connect();
+        }
+
+        try {
+            await this.connection.rebootRp2350(flags, p0, p1, delayMs);
+        } finally {
+            if (!wasConnected) {
+                await this.disconnect();
+            }
+        }
+    }
 }
