@@ -12,7 +12,10 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>pico-hid-mapper⚡固件烧录</h1>
+            <div class="header-title">
+                <h1>pico-hid-mapper⚡固件烧录</h1>
+                <p class="subtitle">在线烧录工具 · 支持 Chrome / Edge 的 WebUSB</p>
+            </div>
         </header>
 
         <section class="card">
@@ -37,7 +40,13 @@
         </section>
 
         <section class="card">
-            <h2>烧录操作</h2>
+            <div class="card-header">
+                <h2>烧录操作</h2>
+                <div class="version-switch" role="group" aria-label="选择固件版本">
+                    <button id="versionStableBtn" class="version-option is-active" type="button" data-channel="stable" aria-pressed="true">稳定版</button>
+                    <button id="versionLatestBtn" class="version-option" type="button" data-channel="latest" aria-pressed="false">最新版</button>
+                </div>
+            </div>
             <div class="row">
                 <button id="flashBtn" class="btn btn-primary">烧录固件</button>
             </div>

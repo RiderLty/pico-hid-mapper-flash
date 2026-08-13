@@ -11,7 +11,8 @@ import { Connection } from '../pkg/connection.js';
 import { PicobootStatusCmd } from '../pkg/commands.js';
 import { uf2ToFlashBuffer } from './uf2/uf2.js';
 import {
-    FIRMWARE_HASH_URL,
+    FIRMWARE_STABLE_HASH_URL,
+    FIRMWARE_LATEST_HASH_URL,
     FIRMWARE_CDN_PREFIX,
     FIRMWARE_CDN_SUFFIX,
     FETCH_TIMEOUT,
@@ -48,6 +49,12 @@ let connection = null;
 let lastStatus = null;
 /** @type {boolean} 是否正在执行获取/烧录/重启等操作（防止重复点击） */
 let busy = false;
+
+/** @type {'stable'|'latest'} 当前固件版本渠道 */
+let firmwareChannel = 'stable';
+
+/** localStorage 键：记住用户上次选择的固件版本 */
+const FIRMWARE_CHANNEL_STORAGE_KEY = 'picoflash-firmware-channel';
 
 // Progress bar
 /** @type {number} */
@@ -93,6 +100,10 @@ const flashBtn = /** @type {HTMLButtonElement} */ (document.getElementById('flas
 /** @type {HTMLElement} */
 const activityContent = document.getElementById('activityContent');
 
+// 固件版本切换
+const versionStableBtn = /** @type {HTMLButtonElement} */ (document.getElementById('versionStableBtn'));
+const versionLatestBtn = /** @type {HTMLButtonElement} */ (document.getElementById('versionLatestBtn'));
+
 //
 // 日志与格式化
 //
@@ -104,6 +115,10 @@ const activityContent = document.getElementById('activityContent');
 function startup() {
     // 记录已加载
     logActivity('picoflash 已加载', 'info');
+
+    // 恢复上次选择的固件版本（默认稳定版）
+    firmwareChannel = loadFirmwareChannel();
+    updateVersionUi();
 
     // 更新界面
     updateUi();
@@ -535,6 +550,57 @@ async function rebootAndDisconnect() {
 }
 
 //
+// 固件版本切换
+//
+
+/**
+ * 从 localStorage 读取上次选择的固件版本，默认稳定版。
+ * @returns {'stable'|'latest'}
+ */
+function loadFirmwareChannel() {
+    try {
+        const saved = localStorage.getItem(FIRMWARE_CHANNEL_STORAGE_KEY);
+        if (saved === 'stable' || saved === 'latest') {
+            return saved;
+        }
+    } catch {
+        // localStorage 不可用（隐私模式等），回退默认值
+    }
+    return 'stable';
+}
+
+/**
+ * 设置固件版本渠道，更新 UI 并持久化。
+ * @param {'stable'|'latest'} channel
+ * @return {void}
+ */
+function setFirmwareChannel(channel) {
+    if (channel === firmwareChannel) return;
+
+    firmwareChannel = channel;
+    try {
+        localStorage.setItem(FIRMWARE_CHANNEL_STORAGE_KEY, channel);
+    } catch {
+        // 忽略持久化失败
+    }
+    updateVersionUi();
+    logActivity(`固件版本已切换为：${channel === 'stable' ? '稳定版' : '最新版'}`, 'info');
+}
+
+/**
+ * 更新版本切换按钮的激活态。
+ * @return {void}
+ */
+function updateVersionUi() {
+    const stable = firmwareChannel === 'stable';
+
+    versionStableBtn.classList.toggle('is-active', stable);
+    versionLatestBtn.classList.toggle('is-active', !stable);
+    versionStableBtn.setAttribute('aria-pressed', String(stable));
+    versionLatestBtn.setAttribute('aria-pressed', String(!stable));
+}
+
+//
 // 固件获取
 //
 
@@ -554,10 +620,10 @@ function addCacheBuster(url) {
  * @returns {Promise<FirmwareData>}
  */
 async function fetchFirmwareData() {
-    logActivity('获取固件中…', 'info');
+    logActivity(`获取固件中（${firmwareChannel === 'stable' ? '稳定版' : '最新版'}）…`, 'info');
 
-    // 1. 获取最新版本 hash
-    const hashUrl = addCacheBuster(FIRMWARE_HASH_URL);
+    // 1. 获取所选渠道（稳定版/最新版）的版本 hash
+    const hashUrl = addCacheBuster(firmwareChannel === 'stable' ? FIRMWARE_STABLE_HASH_URL : FIRMWARE_LATEST_HASH_URL);
     const hashRes = await withTimeout(
         async () => fetch(hashUrl, { cache: 'no-store' }),
         FETCH_TIMEOUT,
@@ -800,6 +866,14 @@ connectBtn.addEventListener('click', async () => {
 
 flashBtn.addEventListener('click', async () => {
     await flash();
+});
+
+versionStableBtn.addEventListener('click', () => {
+    setFirmwareChannel('stable');
+});
+
+versionLatestBtn.addEventListener('click', () => {
+    setFirmwareChannel('latest');
 });
 
 //

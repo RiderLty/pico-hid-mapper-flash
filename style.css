@@ -11,6 +11,7 @@
     --color-success: #22c55e;
     --color-warning: #eab308;
     --color-danger: #ef4444;
+    --color-latest: #ea580c;
     --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
         "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "PingFang SC",
@@ -49,6 +50,14 @@ body {
     padding: 24px 20px 48px;
 }
 
+.header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
 .header h1 {
     margin: 0;
     font-size: 1.9rem;
@@ -57,6 +66,7 @@ body {
 .subtitle {
     margin: 4px 0 0;
     color: var(--color-text-secondary);
+    font-size: 0.9rem;
 }
 
 .card {
@@ -104,6 +114,15 @@ body {
     filter: brightness(1.15);
 }
 
+.btn:focus {
+    outline: none;
+}
+
+.btn:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
 .btn-primary {
     background-color: var(--color-accent);
     border-color: var(--color-accent);
@@ -113,6 +132,92 @@ body {
 .btn-secondary {
     background-color: transparent;
     color: var(--color-text-primary);
+}
+
+/* 烧录卡片头部：标题 + 版本切换 */
+.card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.card-header h2 {
+    margin: 0;
+}
+
+/* 固件版本切换 */
+.version-switch {
+    display: inline-flex;
+    gap: 3px;
+    padding: 3px;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+}
+
+.version-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border: none;
+    border-radius: 999px;
+    background-color: transparent;
+    color: var(--color-text-secondary);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.version-option::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--color-text-secondary);
+    transition: background-color 0.15s ease;
+}
+
+.version-option[data-channel='stable']::before {
+    background-color: var(--color-success);
+}
+
+.version-option[data-channel='latest']::before {
+    background-color: var(--color-warning);
+}
+
+.version-option[data-channel='stable'].is-active {
+    background-color: var(--color-success);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.35);
+}
+
+.version-option[data-channel='latest'].is-active {
+    background-color: var(--color-latest);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
+}
+
+.version-option.is-active::before {
+    background-color: #ffffff;
+}
+
+.version-option:not(.is-active):hover {
+    color: var(--color-text-primary);
+}
+
+.version-option:focus {
+    outline: none;
+}
+
+.version-option:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
 }
 
 /* 设备信息网格 */

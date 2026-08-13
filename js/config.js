@@ -6,8 +6,11 @@
 // 配置文件：固件地址与各项常量
 //
 
-/** @type {string} 获取最新固件 hash 的 KV 接口地址 */
-export const FIRMWARE_HASH_URL = 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-latest-hash';
+/** @type {string} 获取稳定版固件 hash 的 KV 接口地址 */
+export const FIRMWARE_STABLE_HASH_URL = 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-stable-hash';
+
+/** @type {string} 获取最新版固件 hash 的 KV 接口地址 */
+export const FIRMWARE_LATEST_HASH_URL = 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-latest-hash';
 
 /** @type {string} 固件 CDN 前缀，拼接 hash 与后缀得到完整下载地址 */
 export const FIRMWARE_CDN_PREFIX = 'https://1833788059.cdn.123clouddisk.com/1833788059/direct/projects/pico-hid-mapper/pico-hid-mapper-';
