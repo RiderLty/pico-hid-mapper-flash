@@ -3,13 +3,13 @@
 // MIT License
 
 //
-// Imports（浏览器从服务根解析绝对路径）
+// Imports（相对路径，兼容二级目录/根目录/自定义域名部署）
 //
 
-import { Picoboot } from '/pkg/picoboot.js';
-import { Connection } from '/pkg/connection.js';
-import { PicobootStatusCmd } from '/pkg/commands.js';
-import { uf2ToFlashBuffer } from '/js/uf2/uf2.js';
+import { Picoboot } from '../pkg/picoboot.js';
+import { Connection } from '../pkg/connection.js';
+import { PicobootStatusCmd } from '../pkg/commands.js';
+import { uf2ToFlashBuffer } from './uf2/uf2.js';
 import {
     FIRMWARE_HASH_URL,
     FIRMWARE_CDN_PREFIX,
@@ -19,7 +19,7 @@ import {
     FLASH_SPEED,
     DEFAULT_REBOOT_DELAY,
     SHA256_SHORT_LENGTH,
-} from '/js/config.js';
+} from './config.js';
 
 //
 // Type definitions
@@ -180,7 +180,7 @@ function updateStatus(message) {
 
 /**
  * 计算烧录接口在某目标上的 Flash 结束地址。
- * @param {import('/pkg/target.js').Target} target
+ * @param {import('../pkg/target.js').Target} target
  * @returns {number|null}
  */
 function flashEndForTarget(target) {

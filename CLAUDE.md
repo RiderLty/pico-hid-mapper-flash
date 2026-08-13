@@ -9,7 +9,7 @@ pico⚡flash is a pure JavaScript, dependency-free WebUSB implementation of Rasp
 1. **The library** (`pkg/`) — an ES6 module library (published as the `picoflash` npm package) for talking to PICOBOOT devices.
 2. **The website** (`index.html`, `style.css`, `js/app.js`, `js/config.js`, `js/uf2/uf2.js`) — a custom single-page flashing tool with a Chinese UI. It connects to a device, shows its basic info, and flashes a UF2 firmware fetched from a fixed URL.
 
-Both are plain ES6 modules with **no build step, no external dependencies, and no bundler**. The website imports the library directly via absolute paths like `/pkg/picoboot.js` and `/js/uf2/uf2.js`.
+Both are plain ES6 modules with **no build step, no external dependencies, and no bundler**. The website imports the library via relative paths like `../pkg/picoboot.js` and `./uf2/uf2.js`.
 
 ## Commands
 
@@ -47,7 +47,7 @@ Do not "fix" the stall paths by removing the two-step handling — host/device P
 
 A single UI-controller file wiring up `index.html` by element IDs (Chinese UI). Key patterns:
 
-- Absolute-path imports (`/pkg/picoboot.js`, `/js/uf2/uf2.js`, `/js/config.js`), resolved from the served root — do not switch to relative imports.
+- Relative imports (`../pkg/picoboot.js`, `./uf2/uf2.js`, `./config.js`), resolved against the importing module's URL — they work at the served root, under a GitHub Pages project subdirectory (`/repo-name/`), and on a custom domain, so keep them relative.
 - A single global `picoboot` / `connection` pair with a `connected()` guard; all operations go through `checkAndTryConnect()`.
 - Every device operation is wrapped in `withDefaultTimeout`/`withTimeout` (Promise.race) plus an estimated-timeout via `calcTimeout` (data length ÷ speed constant, +5s buffer, ×1.1), and drives the progress bar via `setupProgressInterval`/`clearProgressInterval`.
 - `tryRecover()` is the frontend counterpart to the stall model: on error it queries `getCommandStatus()` then resets the interface, falling back to a disconnect.
