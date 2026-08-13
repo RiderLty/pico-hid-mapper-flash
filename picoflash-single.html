@@ -1,0 +1,2841 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+/* Copyright (C) 2025 Piers Finlayson <piers@piers.rocks> */
+/* MIT License */
+
+:root {
+    --color-bg: #0f1419;
+    --color-bg-card: #1a2129;
+    --color-border: #2b3540;
+    --color-text-primary: #e6edf3;
+    --color-text-secondary: #9aa7b4;
+    --color-accent: #06b6d4;
+    --color-success: #22c55e;
+    --color-warning: #eab308;
+    --color-danger: #ef4444;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "PingFang SC",
+        monospace;
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        --color-bg: #f4f6f8;
+        --color-bg-card: #ffffff;
+        --color-border: #d8dee4;
+        --color-text-primary: #1f2328;
+        --color-text-secondary: #57606a;
+        --color-accent: #0e8fa8;
+        --color-success: #1a7f37;
+        --color-warning: #9a6700;
+        --color-danger: #cf222e;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 24px 20px 48px;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 1.9rem;
+}
+
+.subtitle {
+    margin: 4px 0 0;
+    color: var(--color-text-secondary);
+}
+
+.card {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+}
+
+.card h2 {
+    margin: 0 0 14px;
+    font-size: 1.05rem;
+    color: var(--color-text-secondary);
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.status-line {
+    font-weight: 600;
+}
+
+/* 按钮 */
+.btn {
+    padding: 8px 18px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: filter 0.15s ease;
+}
+
+.btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.btn:not(:disabled):hover {
+    filter: brightness(1.15);
+}
+
+.btn-primary {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #ffffff;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--color-text-primary);
+}
+
+/* 设备信息网格 */
+.device-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 6px 24px;
+    margin: 16px 0 0;
+}
+
+.device-info > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--color-border);
+}
+
+.device-info dt {
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+}
+
+.device-info dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    word-break: break-all;
+    text-align: right;
+}
+
+/* 输入框 */
+.input {
+    flex: 1;
+    min-width: 220px;
+    padding: 8px 12px;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+
+/* 进度条 */
+.progress-bar {
+    margin-top: 16px;
+    height: 10px;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    width: 0;
+    height: 100%;
+    background-color: var(--color-accent);
+    border-radius: 6px;
+    transition: width 0.1s ease;
+}
+
+/* 活动日志 */
+.activity-log {
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 10px 12px;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+.log-entry {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.log-info {
+    color: var(--color-text-secondary);
+}
+
+.log-success {
+    color: var(--color-success);
+}
+
+.log-warning {
+    color: var(--color-warning);
+}
+
+.log-error {
+    color: var(--color-danger);
+}
+
+.hidden {
+    display: none !important;
+}
+
+</style>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <title>pico-hid-mapper固件烧录</title>
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>pico-hid-mapper⚡固件烧录</h1>
+        </header>
+
+        <section class="card">
+            <h2>连接设备</h2>
+            <div class="row">
+                <button id="connectBtn" class="btn btn-primary">连接设备</button>
+                <span id="statusLine" class="status-line">未连接</span>
+            </div>
+
+            <dl id="deviceInfoPanel" class="device-info hidden">
+                <div><dt>目标芯片</dt><dd id="deviceTarget">-</dd></div>
+                <div><dt>VID:PID</dt><dd id="deviceVidPid">-</dd></div>
+                <div><dt>厂商</dt><dd id="deviceManufacturer">-</dd></div>
+                <div><dt>产品</dt><dd id="deviceProduct">-</dd></div>
+                <div><dt>序列号</dt><dd id="deviceSerial">-</dd></div>
+                <div><dt>USB 版本</dt><dd id="deviceUsbVersion">-</dd></div>
+                <div><dt>设备版本</dt><dd id="deviceDeviceVersion">-</dd></div>
+                <div><dt>Flash 范围</dt><dd id="deviceFlashRange">-</dd></div>
+                <div><dt>扇区大小</dt><dd id="deviceSector">-</dd></div>
+                <div><dt>页大小</dt><dd id="devicePage">-</dd></div>
+            </dl>
+        </section>
+
+        <section class="card">
+            <h2>烧录操作</h2>
+            <div class="row">
+                <button id="flashBtn" class="btn btn-primary">烧录固件</button>
+            </div>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>日志</h2>
+            <div id="activityContent" class="activity-log"></div>
+        </section>
+    </div>
+
+    <script type="module">
+// Copyright (C) 2025 Piers Finlayson <piers@piers.rocks>
+//
+// MIT License
+
+const ROM_START = 0x00000000;
+const ROM_END_RP2040 = 0x00004000;
+const ROM_END_RP2350 = 0x00008000;
+
+const FLASH_START = 0x10000000;
+
+const XIP_SRAM_START_RP2040 = 0x15000000;
+const XIP_SRAM_END_RP2040 = 0x15004000;
+const XIP_SRAM_START_RP2350 = 0x13ffc000;
+const XIP_SRAM_END_RP2350 = 0x14000000;
+
+const SRAM_START_RP2040 = 0x20000000;
+const SRAM_END_RP2040 = 0x20042000;
+const SRAM_END_RP2350 = 0x20082000;
+
+const PAGE_SIZE = 0x100;
+const SECTOR_SIZE = 0x1000;
+const STACK_POINTER_RP2040 = SRAM_END_RP2040;
+const STACK_POINTER_RP2350 = SRAM_END_RP2350;
+
+const PICOBOOT_VID = 0x2E8A;
+const PICOBOOT_PID_RP2040 = 0x0003;
+const PICOBOOT_PID_RP2350 = 0x000f;
+
+const PICOBOOT_MAGIC = 0x431FD10B;
+
+const UF2_RP2040_FAMILY_ID = 0xE48BFF56;
+const UF2_ABSOLUTE_FAMILY_ID = 0xE48BFF57;
+const UF2_DATA_FAMILY_ID = 0xE48BFF58;
+const UF2_RP2350_ARM_S_FAMILY_ID = 0xE48BFF59;
+const UF2_RP2350_RISCV_FAMILY_ID = 0xE48BFF5A;
+const UF2_RP2350_ARM_NS_FAMILY_ID = 0xE48BFF5B;
+const UF2_FAMILY_ID_MAX = 0xE48BFF5B;
+
+const PICOBOOT_USB_CLASS = 0xFF;
+const PICOBOOT_USB_SUBCLASS = 0x00;
+
+const REQUEST_RESET = 0x41;
+const REQUEST_GET_COMMAND_STATUS = 0x42;
+const RESPONSE_GET_COMMAND_STATUS_SIZE = 16;
+
+const DEFAULT_ENDPOINT_TIMEOUT = 5000;
+const DEFAULT_COMMAND_STATUS_TIMEOUT = 1000;
+const DEFAULT_RESET_TIMEOUT = 1000;
+
+// Copyright (C) 2025 Piers Finlayson <piers@piers.rocks>
+//
+// MIT License
+
+class PicobootError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'PicobootError';
+    }
+}
+
+class UsbError extends PicobootError {
+    constructor(message, target, originalError) {
+        super(message);
+        this.name = 'UsbError';
+        this.target = target;
+        this.originalError = originalError;
+    }
+}
+
+class ProtocolError extends PicobootError {
+    constructor(message, target) {
+        super(message);
+        this.name = 'ProtocolError';
+        this.target = target;
+    }
+}
+
+class ValidationError extends PicobootError {
+    constructor(message, target) {
+        super(message);
+        this.name = 'ValidationError';
+        this.target = target;
+    }
+}
+
+class NotFoundError extends PicobootError {
+    constructor(message) {
+        super(message);
+        this.name = 'NotFoundError';
+    }
+}
+
+class StatusError extends PicobootError {
+    constructor(message, target, status) {
+        super(message);
+        this.name = 'StatusError';
+        this.target = target;
+        this.status = status;
+    }
+}
+
+// Copyright (C) 2025 Piers Finlayson <piers@piers.rocks>
+//
+// MIT License
+
+class PicobootCmdId {
+    static EXCLUSIVE_ACCESS = 0x1;
+    static REBOOT = 0x2;
+    static REBOOT2 = 0xA;
+    static FLASH_ERASE = 0x3;
+    static WRITE = 0x5;
+    static EXIT_XIP = 0x6;
+    static ENTER_XIP = 0x7;
+    static EXEC = 0x8;
+    static VECTORIZE_FLASH = 0x9;
+    static OTP_WRITE = 0xD;
+    static GET_INFO = 0x8B;
+    static OTP_READ = 0x8C;
+    static READ = 0x84;
+
+    /**
+     * @param {number} cmdId
+     * @returns {string}
+     */
+    static toString(cmdId) {
+        switch (cmdId) {
+            case this.EXCLUSIVE_ACCESS: return 'EXCLUSIVE_ACCESS';
+            case this.REBOOT: return 'REBOOT';
+            case this.REBOOT2: return 'REBOOT2';
+            case this.FLASH_ERASE: return 'FLASH_ERASE';
+            case this.WRITE: return 'WRITE';
+            case this.EXIT_XIP: return 'EXIT_XIP';
+            case this.ENTER_XIP: return 'ENTER_XIP';
+            case this.EXEC: return 'EXEC';
+            case this.VECTORIZE_FLASH: return 'VECTORIZE_FLASH';
+            case this.GET_INFO: return 'GET_INFO';
+            case this.OTP_READ: return 'OTP_READ';
+            case this.OTP_WRITE: return 'OTP_WRITE';
+            case this.READ: return 'READ';
+            default: return 'UNKNOWN';
+        }
+    }
+
+    /**
+     * @param {number} cmdId
+     * @returns {'IN'|'OUT'}
+     */
+    static direction(cmdId) {
+        return (cmdId & 0x80) !== 0 ? 'IN' : 'OUT';
+    }
+}
+
+class PicobootStatus {
+    static OK = 0;
+    static UNKNOWN_CMD = 1;
+    static INVALID_CMD_LENGTH = 2;
+    static INVALID_TRANSFER_LENGTH = 3;
+    static INVALID_ADDRESS = 4;
+    static BAD_ALIGNMENT = 5;
+    static INTERLEAVED_WRITE = 6;
+    static REBOOTING = 7;
+    static UNKNOWN_ERROR = 8;
+    static INVALID_STATE = 9;
+    static NOT_PERMITTED = 10;
+    static INVALID_ARG = 11;
+    static BUFFER_TOO_SMALL = 12;
+    static PRECONDITION_NOT_MET = 13;
+    static MODIFIED_DATA = 14;
+    static INVALID_DATA = 15;
+    static NOT_FOUND = 16;
+    static UNSUPPORTED_MODIFICATION = 17;
+}
+
+class PicobootCmd {
+    /**
+     * @param {number} cmdId
+     * @param {number} cmdSize
+     * @param {number} transferLen
+     * @param {Uint8Array} args
+     */
+    constructor(cmdId, cmdSize, transferLen, args) {
+        this.magic = PICOBOOT_MAGIC;
+        this.token = 0;
+        this.cmdId = cmdId;
+        this.cmdSize = cmdSize;
+        this.transferLen = transferLen;
+        this.args = args;
+    }
+
+    /**
+     * @param {number} token
+     * @returns {PicobootCmd}
+     */
+    setToken(token) {
+        this.token = token;
+        return this;
+    }
+
+    /**
+     * @returns {number}
+     */
+    getTransferLen() {
+        return this.transferLen;
+    }
+
+    /**
+     * @returns {number}
+     */
+    id() {
+        return this.cmdId;
+    }
+
+    /**
+     * @returns {'IN'|'OUT'}
+     */
+    direction() {
+        return PicobootCmdId.direction(this.cmdId);
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    isDataTransfer() {
+        return this.transferLen !== 0;
+    }
+
+    /**
+     * @returns {Uint8Array}
+     */
+    toBytes() {
+        const buffer = new ArrayBuffer(32);
+        const view = new DataView(buffer);
+        
+        view.setUint32(0, this.magic, true);
+        view.setUint32(4, this.token, true);
+        view.setUint8(8, this.cmdId);
+        view.setUint8(9, this.cmdSize);
+        view.setUint16(10, 0, true);
+        view.setUint32(12, this.transferLen, true);
+        
+        for (let i = 0; i < 16; i++) {
+            view.setUint8(16 + i, this.args[i]);
+        }
+        
+        return new Uint8Array(buffer);
+    }
+
+    /**
+     * @param {number} exclusive
+     * @returns {PicobootCmd}
+     */
+    static exclusiveAccess(exclusive) {
+        const args = new Uint8Array(16);
+        args[0] = exclusive;
+        return new PicobootCmd(PicobootCmdId.EXCLUSIVE_ACCESS, 1, 0, args);
+    }
+
+    /**
+     * @param {number} pc
+     * @param {number} sp
+     * @param {number} delay
+     * @returns {PicobootCmd}
+     */
+    static reboot(pc, sp, delay) {
+        const args = new Uint8Array(16);
+        const view = new DataView(args.buffer);
+        view.setUint32(0, pc, true);
+        view.setUint32(4, sp, true);
+        view.setUint32(8, delay, true);
+        view.setUint32(12, 0, true);
+        return new PicobootCmd(PicobootCmdId.REBOOT, 12, 0, args);
+    }
+
+    /**
+     * @param {number} flags
+     * @param {number} p0
+     * @param {number} p1
+     * @param {number} delay
+     * @returns {PicobootCmd}
+     */
+    static reboot2(flags, p0, p1, delay) {
+        const args = new Uint8Array(16);
+        const view = new DataView(args.buffer);
+        view.setUint32(0, flags, true);
+        view.setUint32(4, delay, true);
+        view.setUint32(8, p0, true);
+        view.setUint32(12, p1, true);
+        return new PicobootCmd(PicobootCmdId.REBOOT2, 0x10, 0, args);
+    }
+
+    /**
+     * @param {number} addr
+     * @param {number} size
+     * @returns {PicobootCmd}
+     */
+    static flashErase(addr, size) {
+        const args = new Uint8Array(16);
+        const view = new DataView(args.buffer);
+        view.setUint32(0, addr, true);
+        view.setUint32(4, size, true);
+        view.setUint32(8, 0, true);
+        view.setUint32(12, 0, true);
+        return new PicobootCmd(PicobootCmdId.FLASH_ERASE, 8, 0, args);
+    }
+
+    /**
+     * @param {number} addr
+     * @param {number} size
+     * @returns {PicobootCmd}
+     */
+    static flashWrite(addr, size) {
+        const args = new Uint8Array(16);
+        const view = new DataView(args.buffer);
+        view.setUint32(0, addr, true);
+        view.setUint32(4, size, true);
+        view.setUint32(8, 0, true);
+        view.setUint32(12, 0, true);
+        return new PicobootCmd(PicobootCmdId.WRITE, 8, size, args);
+    }
+
+    /**
+     * @param {number} addr
+     * @param {number} size
+     * @returns {PicobootCmd}
+     */
+    static flashRead(addr, size) {
+        const args = new Uint8Array(16);
+        const view = new DataView(args.buffer);
+        view.setUint32(0, addr, true);
+        view.setUint32(4, size, true);
+        view.setUint32(8, 0, true);
+        view.setUint32(12, 0, true);
+        return new PicobootCmd(PicobootCmdId.READ, 8, size, args);
+    }
+
+    /**
+     * @returns {PicobootCmd}
+     */
+    static enterXip() {
+        const args = new Uint8Array(16);
+        return new PicobootCmd(PicobootCmdId.ENTER_XIP, 0, 0, args);
+    }
+
+    /**
+     * @returns {PicobootCmd}
+     */
+    static exitXip() {
+        const args = new Uint8Array(16);
+        return new PicobootCmd(PicobootCmdId.EXIT_XIP, 0, 0, args);
+    }
+    
+    /**
+     * @param {number} firstRow - first OTP row to read (1 row = 16 bytes)
+     * @param {number} rowCount - number of OTP rows to write (1 row = 16 bytes)
+     * @param {boolean} ecc - whether to return ECC rows
+     * @returns {PicobootCmd}
+     */
+    static otpRead(firstRow, rowCount, ecc) {
+        let size = rowCount * (ecc ? 2 : 4);
+
+        const args = new Uint8Array(16);
+        const view = new DataView(args.buffer);
+
+        view.setUint16(0, firstRow, true);
+        view.setUint16(2, rowCount, true);
+        view.setUint8(4, ecc ? 1 : 0);
+        console.log(`OTP Read Command - firstRow: ${firstRow}, rowCount: ${rowCount}, ecc: ${ecc}, size: ${size}`);
+        return new PicobootCmd(PicobootCmdId.OTP_READ, 5, size, args);
+    }
+
+    /**
+     * @param {number} rowIndex - OTP row index to write (1 row = 16 bytes)
+     * @param {Uint8Array} data - OTP data
+     * @param {boolean} ecc - whether to write ECC 16-bit rows or 32-bit rows
+     */
+    static otpWrite(rowIndex, data, ecc) {
+        // Check data length is multiple of 2 bytes (ecc) or 4 bytes (no ecc)
+        if (ecc && (data.length % 2 !== 0)) {
+            throw new Error('OTP data length must be multiple of 2 bytes when writing with ECC');
+        }
+        if (!ecc && (data.length % 4 !== 0)) {
+            throw new Error('OTP data length must be multiple of 4 bytes when writing without ECC');
+        }
+
+        let rowCount = data.length / (ecc ? 2 : 4);
+
+        const args = new Uint8Array(16);
+        const view = new DataView(args.buffer);
+        
+        view.setUint16(0, rowIndex, true);
+        view.setUint16(2, rowCount, true);
+        view.setUint8(4, ecc ? 1 : 0);
+        console.log(`OTP Write Command - rowIndex: ${rowIndex}, rowCount: ${rowCount}, ecc: ${ecc}, dataLength: ${data.length}`);
+        return new PicobootCmd(PicobootCmdId.OTP_WRITE, 5, data.length, args);
+    }
+
+}
+
+class PicobootStatusCmd {
+    /**
+     * @param {Uint8Array} data - 16-byte status response
+     */
+    constructor(data) {
+        const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        this.token = view.getUint32(0, true);
+        this.statusCode = view.getUint32(4, true);
+        this.cmdId = view.getUint8(8);
+        this.inProgress = view.getUint8(9);
+    }
+
+    /**
+     * @returns {number}
+     */
+    getToken() {
+        return this.token;
+    }
+
+    /**
+     * @returns {number}
+     */
+    getStatusCode() {
+        return this.statusCode;
+    }
+
+    /**
+     * @returns {string}
+     */
+    getStatusName() {
+        switch (this.statusCode) {
+            case PicobootStatus.OK: return 'OK';
+            case PicobootStatus.UNKNOWN_CMD: return 'UNKNOWN_CMD';
+            case PicobootStatus.INVALID_CMD_LENGTH: return 'INVALID_CMD_LENGTH';
+            case PicobootStatus.INVALID_TRANSFER_LENGTH: return 'INVALID_TRANSFER_LENGTH';
+            case PicobootStatus.INVALID_ADDRESS: return 'INVALID_ADDRESS';
+            case PicobootStatus.BAD_ALIGNMENT: return 'BAD_ALIGNMENT';
+            case PicobootStatus.INTERLEAVED_WRITE: return 'INTERLEAVED_WRITE';
+            case PicobootStatus.REBOOTING: return 'REBOOTING';
+            case PicobootStatus.UNKNOWN_ERROR: return 'UNKNOWN_ERROR';
+            case PicobootStatus.INVALID_STATE: return 'INVALID_STATE';
+            case PicobootStatus.NOT_PERMITTED: return 'NOT_PERMITTED';
+            case PicobootStatus.INVALID_ARG: return 'INVALID_ARG';
+            case PicobootStatus.BUFFER_TOO_SMALL: return 'BUFFER_TOO_SMALL';
+            case PicobootStatus.PRECONDITION_NOT_MET: return 'PRECONDITION_NOT_MET';
+            case PicobootStatus.MODIFIED_DATA: return 'MODIFIED_DATA';
+            case PicobootStatus.INVALID_DATA: return 'INVALID_DATA';
+            case PicobootStatus.NOT_FOUND: return 'NOT_FOUND';
+            case PicobootStatus.UNSUPPORTED_MODIFICATION: return 'UNSUPPORTED_MODIFICATION';
+            default: return `UNKNOWN(${this.statusCode})`;
+        }
+    }
+
+    /**
+     * @returns {number}
+     */
+    getCmdId() {
+        return this.cmdId;
+    }
+
+    /**
+     * @returns {string}
+     */
+    getCmdName() {
+        return PicobootCmdId.toString(this.cmdId);
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    isInProgress() {
+        return this.inProgress !== 0;
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    isOk() {
+        return this.statusCode === PicobootStatus.OK;
+    }
+
+    /**
+     * @returns {string}
+     */
+    toString() {
+        return `Status[token=${this.token}, status=${this.getStatusName()}, cmd=${this.getCmdName()}, inProgress=${this.isInProgress()}]`;
+    }
+}
+
+// Copyright (C) 2025 Piers Finlayson <piers@piers.rocks>
+//
+// MIT License
+
+class Target {
+    /**
+     * @param {string} type - 'RP2040', 'RP2350', or 'CUSTOM'
+     * @param {number} [vid]
+     * @param {number} [pid]
+     */
+    constructor(type, vid, pid) {
+        this.type = type;
+        if (type === 'CUSTOM') {
+            this.vid = vid;
+            this.pid = pid;
+        } else {
+            this.vid = PICOBOOT_VID;
+            this.pid = type === 'RP2040' ? PICOBOOT_PID_RP2040 : PICOBOOT_PID_RP2350;
+        }
+    }
+
+    /**
+     * @param {USBDevice} device
+     * @returns {Target}
+     */
+    static fromDevice(device) {
+        const vid = device.vendorId;
+        const pid = device.productId;
+        
+        if (vid === PICOBOOT_VID && pid === PICOBOOT_PID_RP2040) {
+            return new Target('RP2040');
+        } else if (vid === PICOBOOT_VID && pid === PICOBOOT_PID_RP2350) {
+            return new Target('RP2350');
+        } else {
+            return new Target('CUSTOM', vid, pid);
+        }
+    }
+
+    /**
+     * @returns {number}
+     */
+    getVid() {
+        return this.vid;
+    }
+
+    /**
+     * @returns {number}
+     */
+    getPid() {
+        return this.pid;
+    }
+
+    /**
+     * @returns {number}
+     */
+    flashStart() {
+        return FLASH_START;
+    }
+
+    /**
+     * @returns {number}
+     */
+    flashSectorSize() {
+        return SECTOR_SIZE;
+    }
+
+    /**
+     * @returns {number}
+     */
+    flashPageSize() {
+        return PAGE_SIZE;
+    }
+
+    /**
+     * @returns {number|null}
+     */
+    defaultStackPointer() {
+        switch (this.type) {
+            case 'RP2040': return STACK_POINTER_RP2040;
+            case 'RP2350': return STACK_POINTER_RP2350;
+            default: return null;
+        }
+    }
+
+    /**
+     * @returns {string}
+     */
+    toString() {
+        if (this.type === 'CUSTOM') {
+            return `${this.vid.toString(16).padStart(4, '0')}:${this.pid.toString(16).padStart(4, '0')}`;
+        }
+        return this.type;
+    }
+}
+
+// Copyright (C) 2025 Piers Finlayson <piers@piers.rocks>
+//
+// MIT License
+
+class Connection {
+    /**
+     * @param {USBDevice} device
+     * @param {Target} target
+     * @param {USBInterface} usbInterface
+     * @param {number} outEp
+     * @param {number} inEp
+     * @param {number} inEpMaxPacketSize
+     * @param {Object} timeouts
+     */
+    constructor(device, target, usbInterface, outEp, inEp, inEpMaxPacketSize, timeouts) {
+        this.device = device;
+        this.target = target;
+        this.interface = usbInterface;
+        this.outEp = outEp;
+        this.inEp = inEp;
+        this.inEpMaxPacketSize = inEpMaxPacketSize;
+        this.timeouts = timeouts;
+        this.cmdToken = 1;
+    }
+
+    /**
+     * @returns {Promise<PicobootStatusCmd>}
+     */
+    async getCommandStatus() {
+        console.log('Getting command status');
+        
+        let result;
+        try {
+            result = await this.device.controlTransferIn({
+                requestType: 'vendor',
+                recipient: 'interface',
+                request: REQUEST_GET_COMMAND_STATUS,
+                value: 0,
+                index: this.interface.interfaceNumber
+            }, RESPONSE_GET_COMMAND_STATUS_SIZE);
+        } catch (e) {
+            throw new UsbError(
+                `Failed to get command status: ${e.message}`,
+                this.target,
+                e
+            );
+        }
+        
+        console.log(`Control transfer completed with status: ${result.status}`);
+        if (result.status !== 'ok') {
+            throw new StatusError(
+                `Control transfer returned status: ${result.status}`,
+                this.target,
+                result.status
+            );
+        }
+        
+        const data = new Uint8Array(result.data.buffer);
+        const status = new PicobootStatusCmd(data);
+        
+        console.log(`Command status: ${status.toString()}`);
+        
+        return status;
+    }
+
+    /**
+     * @param {string} direction - 'in' or 'out'
+     * @param {number} ep_num
+     * @returns {Promise<boolean>}
+     */
+    async getHaltState(direction, ep_num) {
+        const ep_addr = (direction === 'in' ? 0x80 : 0x00) | ep_num;
+        const result = await this.device.controlTransferIn({
+            requestType: 'standard',
+            recipient: 'endpoint',
+            request: 0x00,       // GET_STATUS
+            value: 0x0000,
+            index: ep_addr
+        }, 2);
+
+        if (result.status !== 'ok') {
+            throw new Error(`GET_STATUS failed: ${result.status}`);
+        }
+        const status = new DataView(result.data.buffer).getUint16(0, true);
+        // Bit 0 of the status indicates whether the endpoint is halted
+        const halted = (status & 0x0001) !== 0;
+        return halted;
+    }
+
+    /**
+     * @returns {Promise<void>}
+     */
+    async resetInterface() {
+        console.log('Resetting PICOBOOT interface');
+
+        // Send INTERFACE_RESET request to the device - this causes it to
+        // clear HALT on both bulk endpoints if set
+        console.log('Sending INTERFACE_RESET');
+        try {
+            await this.device.controlTransferOut({
+                requestType: 'vendor',
+                recipient: 'interface',
+                request: REQUEST_RESET,
+                value: 0,
+                index: this.interface.interfaceNumber
+            });
+            console.log('Interface reset complete');
+        } catch (e) {
+            throw new UsbError(
+                `Failed to reset PICOBOOT interface: ${e.message}`,
+                this.target,
+                e
+            );
+        }
+    }
+
+    /**
+     * @param {PicobootCmd} cmd
+     * @param {Uint8Array} [buf]
+     * @returns {Promise<Uint8Array>}
+     */
+    async sendCmd(cmd, buf) {
+        cmd.setToken(this.nextToken());
+        
+        const cmdBytes = cmd.toBytes();
+        console.log(`Sending command ${PicobootCmdId.toString(cmd.id())} (token: ${cmd.token})`);
+        
+        await this.bulkWrite(cmdBytes, true);
+        
+        let result = new Uint8Array(0);
+        
+        if (cmd.isDataTransfer()) {
+            if (cmd.direction() === 'IN') {
+                result = await this.bulkRead(cmd.getTransferLen(), true);
+            } else {
+                if (!buf) {
+                    throw new ProtocolError(
+                        `Missing buffer for OUT data transfer command ${PicobootCmdId.toString(cmd.id())}`,
+                        this.target
+                    );
+                }
+                await this.bulkWrite(buf, true);
+            }
+        }
+        
+        if (cmd.direction() === 'IN') {
+            await this.bulkWrite(new Uint8Array([0]), false);
+        } else {
+            await this.bulkRead(1, false);
+        }
+        
+        return result;
+    }
+
+    /**
+     * @param {number} exclusive - 0: not exclusive, 1: exclusive, 2: exclusive and eject
+     * @returns {Promise<void>}
+     */
+    async setExclusiveAccess(exclusive) {
+        console.log(`Setting exclusive access mode: ${exclusive}`);
+        const cmd = PicobootCmd.exclusiveAccess(exclusive);
+        await this.sendCmd(cmd, null);
+    }
+
+    /**
+     * @param {number} delayMs
+     * @returns {Promise<void>}
+     */
+    async reboot(delayMs) {
+        console.log(`Rebooting device with ${delayMs}ms delay`);
+        
+        if (this.target.type === 'RP2040') {
+            await this.rebootRp2040(0, this.target.defaultStackPointer(), delayMs);
+        } else if (this.target.type === 'RP2350') {
+            await this.rebootRp2350(0, 0, 0, delayMs);
+        } else {
+            throw new ProtocolError(
+                'Reboot command not supported for custom targets',
+                this.target
+            );
+        }
+    }
+
+    /**
+     * @param {number} delayMs
+     * @returns {Promise<void>}
+     */
+    async rebootBootsel(delayMs) {
+        console.log(`Rebooting device into BOOTSEL with ${delayMs}ms delay`);
+
+        if (this.target.type === 'RP2350') {
+            console.log('RP2350 Reboot to BOOTSEL');
+            const flags = 0x0002;
+            await this.rebootRp2350(flags, 0, 0, delayMs);
+        } else if (this.target.type === 'RP2040') {
+            throw new ProtocolError(
+                'Reboot to BOOTSEL command not supported for RP2040 targets',
+                this.target
+            );
+        } else {
+            throw new ProtocolError(
+                'Reboot to BOOTSEL command not supported for RP2custom targets',
+                this.target
+            );
+        }
+    }
+
+    /**
+     * @param {number} pc
+     * @param {number} sp
+     * @param {number} delayMs
+     * @returns {Promise<void>}
+     */
+    async rebootRp2040(pc, sp, delayMs) {
+        if (this.target.type === 'RP2350') {
+            throw new ProtocolError(
+                'REBOOT command not supported on RP2350',
+                this.target
+            );
+        }
+        
+        console.log(`Rebooting RP2040: pc=${pc.toString(16)}, sp=${sp.toString(16)}, delay=${delayMs}ms`);
+        const cmd = PicobootCmd.reboot(pc, sp, delayMs);
+        await this.sendCmd(cmd, null);
+    }
+
+    /**
+     * @param {number} flags
+     * @param {number} p0
+     * @param {number} p1
+     * @param {number} delayMs
+     * @returns {Promise<void>}
+     */
+    async rebootRp2350(flags, p0, p1, delayMs) {
+        if (this.target.type === 'RP2040') {
+            throw new ProtocolError(
+                'REBOOT2 command not supported on RP2040',
+                this.target
+            );
+        }
+        
+        console.log(`Rebooting RP2350: flags=${flags}, p0=${p0}, p1=${p1}, delay=${delayMs}ms`);
+        const cmd = PicobootCmd.reboot2(flags, p0, p1, delayMs);
+        await this.sendCmd(cmd, null);
+    }
+
+    /**
+     * @param {number} size
+     * @returns {Promise<void>}
+     */
+    async flashEraseStart(size) {
+        const sectorSize = this.target.flashSectorSize();
+        const alignedSize = Math.ceil(size / sectorSize) * sectorSize;
+        console.log(`Erasing flash from start, size rounded to ${alignedSize} bytes`);
+        await this.flashErase(this.target.flashStart(), alignedSize);
+    }
+
+    /**
+     * @param {number} addr
+     * @param {number} size
+     * @returns {Promise<void>}
+     */
+    async flashErase(addr, size) {
+        const sectorSize = this.target.flashSectorSize();
+        
+        if (addr % sectorSize !== 0) {
+            throw new ValidationError(
+                `Erase address ${addr.toString(16)} must be aligned to sector size ${sectorSize}`,
+                this.target
+            );
+        }
+        
+        if (size % sectorSize !== 0) {
+            throw new ValidationError(
+                `Erase size ${size} must be a multiple of sector size ${sectorSize}`,
+                this.target
+            );
+        }
+        
+        console.log(`Erasing flash: addr=0x${addr.toString(16)}, size=${size}`);
+        const cmd = PicobootCmd.flashErase(addr, size);
+        await this.sendCmd(cmd, null);
+    }
+
+    /**
+     * @param {Uint8Array} buf
+     * @returns {Promise<void>}
+     */
+    async flashWriteStart(buf) {
+        await this.flashWrite(this.target.flashStart(), buf);
+    }
+
+    /**
+     * @param {number} addr
+     * @param {Uint8Array} buf
+     * @returns {Promise<void>}
+     */
+    async flashWrite(addr, buf) {
+        const pageSize = this.target.flashPageSize();
+        
+        if (addr % pageSize !== 0) {
+            throw new ValidationError(
+                `Write address ${addr.toString(16)} must be aligned to page size ${pageSize}`,
+                this.target
+            );
+        }
+        
+        console.log(`Writing flash: addr=0x${addr.toString(16)}, size=${buf.length}`);
+        const cmd = PicobootCmd.flashWrite(addr, buf.length);
+        await this.sendCmd(cmd, buf);
+    }
+
+    /**
+     * @param {number} size
+     * @returns {Promise<Uint8Array>}
+     */
+    async flashReadStart(size) {
+        return await this.flashRead(this.target.flashStart(), size);
+    }
+
+    /**
+     * @param {number} addr
+     * @param {number} size
+     * @returns {Promise<Uint8Array>}
+     */
+    async flashRead(addr, size) {
+        console.log(`Reading flash: addr=0x${addr.toString(16)}, size=${size}`);
+        const cmd = PicobootCmd.flashRead(addr, size);
+        return await this.sendCmd(cmd, null);
+    }
+
+    /**
+     * @returns {Promise<void>}
+     */
+    async enterXip() {
+        console.log('Entering XIP mode');
+        const cmd = PicobootCmd.enterXip();
+        await this.sendCmd(cmd, null);
+    }
+
+    /**
+     * @returns {Promise<void>}
+     */
+    async exitXip() {
+        console.log('Exiting XIP mode');
+        const cmd = PicobootCmd.exitXip();
+        await this.sendCmd(cmd, null);
+    }
+
+    /**
+     * OTP Read (RP2350 only)
+     * @param {number} rowIndex - first row to read
+     * @param {number} rowCount - number of rows to read
+     * @param {boolean} ecc - whether to read ECC rows (16-bit) or non-ECC (32-bit)
+     * @returns {Promise<Uint8Array>}
+     */
+    async otpRead(rowIndex, rowCount, ecc) {
+        if (this.target.type !== 'RP2350') {
+            throw new ProtocolError(
+                'OTP read command is only supported on RP2350 targets',
+                this.target
+            );
+        }
+
+        console.log(`Reading OTP: rowIndex=${rowIndex}, rowCount=${rowCount}, ecc=${ecc}`);
+        const cmd = PicobootCmd.otpRead(rowIndex, rowCount, ecc);
+        return await this.sendCmd(cmd, null);
+    }
+
+    /**
+     * OTP Write (RP2350 only)
+     * @param {number} rowIndex - first row to write
+     * @param {Uint8Array} data - data to write
+     * @param {boolean} ecc - whether data contains ECC rows (16-bit) or non-ECC (32-bit)
+     * @returns {Promise<void>}
+     */
+    async otpWrite(rowIndex, data, ecc) {
+        throw new ValidationError('OTP write command is currently disabled for safety reasons', this.target);
+
+        if (this.target.type !== 'RP2350') {
+            throw new ProtocolError(
+                'OTP write command is only supported on RP2350 targets',
+                this.target
+            );
+        }
+
+        if (ecc && (data.length % 2 !== 0)) {
+            throw new ValidationError('OTP data length must be multiple of 2 bytes when writing with ECC', this.target);
+        }
+        if (!ecc && (data.length % 4 !== 0)) {
+            throw new ValidationError('OTP data length must be multiple of 4 bytes when writing without ECC', this.target);
+        }
+
+        console.log(`Writing OTP: rowIndex=${rowIndex}, rowCount=${data.length / (ecc ? 2 : 4)}, ecc=${ecc}`);
+        const cmd = PicobootCmd.otpWrite(rowIndex, data, ecc);
+        await this.sendCmd(cmd, data);
+    }
+    
+    /**
+     * @returns {Target}
+     */
+    getTarget() {
+        return this.target;
+    }
+
+    /**
+     * @param {string} direction - 'in' or 'out'
+     * @param {number} epAddress
+     * @returns ${Promise<boolean>}
+     */
+    async isEndpointHalted(direction, epAddress) {
+        const index = direction === 'in' 
+            ? epAddress | 0x80 
+            : epAddress & ~0x80;
+        
+        const result = await this.device.controlTransferIn({
+            requestType: 'standard',
+            recipient: 'endpoint',
+            request: 0x00,      // GET_STATUS
+            value: 0x0000,
+            index: index
+        }, 2);
+        
+        const status = new Uint16Array(result.data.buffer)[0];
+        return (status & 0x0001) !== 0;  // bit 0 = ENDPOINT_HALT
+    }
+
+    /**
+     * @returns {Promise<void>}
+     */
+    async checkAndClearHalts() {
+        try {
+            if (this.isEndpointHalted('in', this.inEp)) {
+                console.warn('Endpoint is halted, attempting to clear halt condition');
+
+                await this.device.clearHalt('in', this.inEp);
+                console.log('Halt condition cleared');
+            }
+            if (this.isEndpointHalted('out', this.outEp)) {
+                console.warn('OUT Endpoint is halted, attempting to clear halt condition');
+
+                await this.device.clearHalt('out', this.outEp);
+                console.log('OUT Halt condition cleared');
+            }
+        } catch (e) {
+            console.error('Error while checking/clearing halt condition:', e);
+        }
+    }
+
+    /**
+     * @param {number} bufSize
+     * @param {boolean} check
+     * @returns {Promise<Uint8Array>}
+     */
+    async bulkRead(bufSize, check) {
+        const maxPacketSize = this.inEpMaxPacketSize;
+        const transferSize = Math.ceil(bufSize / maxPacketSize) * maxPacketSize;
+        
+        try {
+            console.log(`Performing bulk read: requested=${bufSize}, transferSize=${transferSize}`);
+            const result = await this.device.transferIn(this.inEp, transferSize);
+            console.log('Bulk read completed');
+            
+            if (result.status === 'stall') {
+                // Linux/macOS
+                // This is a hardware stall clear.  INTERFACE_RESET must still
+                // be sent to clear the protocol stall condition.  This will
+                // happen when GET_CMD_STATUS is queried after this error is
+                // thrown, and that returns an error.
+                await this.device.clearHalt('in', this.inEp);
+            }
+            if (result.status !== 'ok') {
+                throw new Error(`Transfer status: ${result.status}`);
+            }
+            
+            const data = new Uint8Array(result.data.buffer);
+            
+            if (check && data.length < bufSize) {
+                throw new Error(`Read size mismatch: expected ${bufSize}, got ${data.length}`);
+            }
+            
+            return data.slice(0, bufSize);
+        } catch (e) {
+            console.error('Bulk read error:', e);
+            // Windows stall path
+            //await this.checkAndClearHalts();
+            throw new UsbError(
+                `Error from device (${e.message})`,
+                this.target,
+                e
+            );
+        }
+    }
+
+    /**
+     * @param {Uint8Array} data
+     * @param {boolean} check
+     * @returns {Promise<number>}
+     */
+    async bulkWrite(data, check) {
+        try {
+            const result = await this.device.transferOut(this.outEp, data);
+            
+            if (result.status === 'stall') {
+                // Linux/macOS
+                // This is a hardware stall clear.  INTERFACE_RESET must still
+                // be sent to clear the protocol stall condition.  This will
+                // happen when GET_CMD_STATUS is queried after this error is
+                // thrown, and that returns an error.
+                await this.device.clearHalt('in', this.inEp);
+            }
+            if (result.status !== 'ok') {
+                throw new Error(`Transfer status: ${result.status}`);
+            }
+            
+            if (check && result.bytesWritten !== data.length) {
+                throw new Error(`Write size mismatch: expected ${data.length}, wrote ${result.bytesWritten}`);
+            }
+
+            //console.log(`Bulk write complete: ${result.bytesWritten} bytes written, data: ${Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+       
+            return result.bytesWritten;
+        } catch (e) {
+            console.error('Bulk write error:', e);
+            // Windows stall path
+            //await this.checkAndClearHalts();
+            throw new UsbError(
+                `Error from device (${e.message})`,
+                this.target,
+                e
+            );
+        }
+    }
+
+    /**
+     * @returns {number}
+     */
+    nextToken() {
+        const token = this.cmdToken;
+        this.cmdToken++;
+        return token;
+    }
+}
+
+// Copyright (C) 2025 Piers Finlayson <piers@piers.rocks>
+//
+// MIT License
+
+class Picoboot {
+    /**
+     * @param {USBDevice} device
+     * @param {Target} target
+     * @param {number} ifNum
+     * @param {number} outEp
+     * @param {number} inEp
+     * @param {number} inEpMaxPacketSize
+     * @param {Object} timeouts
+     */
+    constructor(device, target, ifNum, outEp, inEp, inEpMaxPacketSize, timeouts) {
+        this.device = device;
+        this.target = target;
+        this.ifNum = ifNum;
+        this.outEp = outEp;
+        this.inEp = inEp;
+        this.inEpMaxPacketSize = inEpMaxPacketSize;
+        this.timeouts = timeouts || {
+            endpoint: DEFAULT_ENDPOINT_TIMEOUT,
+            commandStatus: DEFAULT_COMMAND_STATUS_TIMEOUT,
+            reset: DEFAULT_RESET_TIMEOUT,
+        };
+        this.connection = null;
+    }
+
+    /**
+     * @param {USBDevice} device
+     * @param {Object} [timeouts]
+     * @returns {Picoboot}
+     */
+    static fromDevice(device, timeouts) {
+        const target = Target.fromDevice(device);
+        console.log(`Creating Picoboot instance for ${target.toString()}`);
+        
+        let picobootInterface = null;
+        let ifNum = null;
+        
+        // Picoboot can use interface 0 or 1.  While the RP2350 schematic says
+        // interface numbers can change, the RP2350 itself will only use
+        // interface 0 (if mass storage device disabled) and interface 1
+        // otherwise - i.e. more than 1 interface.  That's the logic encoded
+        // here.  Strictly this implementation could be more flexible and
+        // search all interfaces, but it seems like picoboot implementations
+        // will want to work with picotool too, and picotool uses even simpler
+        // logic - either interface 0 (if 1 interface) or interface 1 (if more
+        // than 1 interface).
+        for (const config of device.configurations) {
+            // If there is more than one interface, start at interface[1]
+            const startIndex = config.interfaces.length > 1 ? 1 : 0;
+            console.log(`Found ${config.interfaces.length} interfaces in configuration ${config.configurationValue}, starting search at index ${startIndex}`);
+            for (let i = startIndex; i < config.interfaces.length; i++) {
+                const iface = config.interfaces[i];
+                for (const alt of iface.alternates) {
+                    if (alt.interfaceClass === PICOBOOT_USB_CLASS && 
+                        alt.interfaceSubclass === PICOBOOT_USB_SUBCLASS) {
+                        picobootInterface = alt;
+                        ifNum = iface.interfaceNumber;
+                        console.log(`Found PICOBOOT interface ${ifNum}`);
+                        break;
+                    }
+                }
+                if (picobootInterface) break;
+            }
+            if (picobootInterface) break;
+        }
+        
+        if (!picobootInterface) {
+            throw new ProtocolError(
+                `No PICOBOOT interface found on device`,
+                target
+            );
+        }
+        
+        let inEp = null;
+        let inEpMaxPacketSize = 0;
+        let outEp = null;
+        
+        for (const endpoint of picobootInterface.endpoints) {
+            if (endpoint.type === 'bulk') {
+                if (endpoint.direction === 'in') {
+                    inEp = endpoint.endpointNumber;
+                    inEpMaxPacketSize = endpoint.packetSize;
+                } else if (endpoint.direction === 'out') {
+                    outEp = endpoint.endpointNumber;
+                }
+            }
+        }
+        
+        if (inEp === null || outEp === null) {
+            throw new ProtocolError(
+                `Failed to find bulk endpoints on PICOBOOT interface`,
+                target
+            );
+        }
+        
+        console.log(`Found endpoints: IN=${inEp}, OUT=${outEp}, max_packet_size=${inEpMaxPacketSize}`);
+        
+        return new Picoboot(device, target, ifNum, outEp, inEp, inEpMaxPacketSize, timeouts);
+    }
+
+    /**
+     * @param {Array<Target>} [targets]
+     * @param {Object} [timeouts]
+     * @returns {Promise<Picoboot>}
+     */
+    static async requestDevice(targets, timeouts) {
+        if (!('usb' in navigator)) {
+            throw new UsbError('WebUSB is not supported by this browser', null);
+        }
+
+        const filters = [];
+        
+        if (targets && targets.length > 0) {
+            for (const target of targets) {
+                filters.push({
+                    vendorId: target.getVid(),
+                    productId: target.getPid(),
+                });
+            }
+        } else {
+            filters.push({ vendorId: PICOBOOT_VID, productId: PICOBOOT_PID_RP2040 });
+            filters.push({ vendorId: PICOBOOT_VID, productId: PICOBOOT_PID_RP2350 });
+        }
+        
+        console.log('Requesting USB device from user');
+
+        try {
+            const device = await navigator.usb.requestDevice({ filters });
+            console.log(`User selected device: VID=${device.vendorId.toString(16)}, PID=${device.productId.toString(16)}`);
+            return await Picoboot.fromDevice(device, timeouts);
+        } catch (e) {
+            if (e.name === 'NotFoundError') {
+                throw new NotFoundError('Device request cancelled or no device selected');
+            }
+            throw new UsbError(`Failed to request device: ${e.message}`, null, e);
+        }
+    }
+
+    /**
+     * @param {Array<Target>} [targets]
+     * @param {Object} [timeouts]
+     * @returns {Promise<Array<Picoboot>>}
+     */
+    static async getDevices(targets, timeouts) {
+        const filters = [];
+        
+        if (targets && targets.length > 0) {
+            for (const target of targets) {
+                filters.push({
+                    vendorId: target.getVid(),
+                    productId: target.getPid(),
+                });
+            }
+        } else {
+            filters.push({ vendorId: PICOBOOT_VID, productId: PICOBOOT_PID_RP2040 });
+            filters.push({ vendorId: PICOBOOT_VID, productId: PICOBOOT_PID_RP2350 });
+        }
+        
+        console.log('Getting paired USB devices');
+        
+        try {
+            const devices = await navigator.usb.getDevices();
+            const picobootDevices = [];
+            
+            for (const device of devices) {
+                const matchesFilter = filters.some(filter => 
+                    device.vendorId === filter.vendorId && 
+                    device.productId === filter.productId
+                );
+                
+                if (matchesFilter) {
+                    try {
+                        const picoboot = Picoboot.fromDevice(device, timeouts);
+                        picobootDevices.push(picoboot);
+                    } catch (e) {
+                        console.error(`Failed to create Picoboot from device: ${e.message}`);
+                    }
+                }
+            }
+            
+            console.log(`Found ${picobootDevices.length} PICOBOOT devices`);
+            return picobootDevices;
+        } catch (e) {
+            throw new UsbError(`Failed to get devices: ${e.message}`, null, e);
+        }
+    }
+
+    /**
+     * @returns {Promise<Connection>}
+     */
+    async connect() {
+        if (this.connection) {
+            console.log('Already connected, returning existing connection');
+            return this.connection;
+        }
+        
+        console.log(`Connecting to ${this.target.toString()}`);
+        
+        if (!this.device.opened) {
+            try {
+                await this.device.open();
+                console.log('Device opened');
+            } catch (e) {
+                throw new UsbError(
+                    `Failed to open device: ${e.message}`,
+                    this.target,
+                    e
+                );
+            }
+        }
+        
+        try {
+            await this.device.selectConfiguration(1);
+            console.log('Configuration selected');
+        } catch (e) {
+            throw new UsbError(
+                `Failed to select configuration: ${e.message}`,
+                this.target,
+                e
+            );
+        }
+        
+        try {
+            await this.device.claimInterface(this.ifNum);
+            console.log(`Interface ${this.ifNum} claimed`);
+        } catch (e) {
+            throw new UsbError(
+                `Failed to claim interface: ${e.message}`,
+                this.target,
+                e
+            );
+        }
+        
+        const usbInterface = this.device.configuration.interfaces.find(
+            iface => iface.interfaceNumber === this.ifNum
+        );
+        
+        this.connection = new Connection(
+            this.device,
+            this.target,
+            usbInterface,
+            this.outEp,
+            this.inEp,
+            this.inEpMaxPacketSize,
+            this.timeouts
+        );
+
+        await this.connection.resetInterface(true);
+        
+        console.log('Connection established');
+        return this.connection;
+    }
+
+    /**
+     * Disconnects from the device.
+     * Does not throw on error, logs only.
+     * @returns {Promise<void>}
+     */
+    async disconnect() {
+        if (!this.connection) {
+            return;
+        }
+        
+        console.log(`Disconnecting from ${this.target.toString()}`);
+        
+        try {
+            await this.device.releaseInterface(this.ifNum);
+            console.log(`Interface ${this.ifNum} released`);
+        } catch (e) {
+            console.error(`Failed to release interface: ${e.message}`);
+        }
+        
+        try {
+            await this.device.close();
+            console.log('Device closed');
+        } catch (e) {
+            console.error(`Failed to close device: ${e.message}`);
+        }
+        
+        this.connection = null;
+    }
+
+    /**
+     * @param {Object} timeouts
+     */
+    setTimeouts(timeouts) {
+        this.timeouts = timeouts;
+        if (this.connection) {
+            this.connection.timeouts = timeouts;
+        }
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    isConnected() {
+        return this.connection !== null;
+    }
+
+    /**
+     * @returns {Connection|null}
+     */
+    getConnection() {
+        return this.connection;
+    }
+
+    /**
+     * @returns {Target}
+     */
+    getTarget() {
+        return this.target;
+    }
+
+    /**
+     * @returns {string}
+     */
+    getInfo() {
+        return `${this.device.vendorId.toString(16).padStart(4, '0').toUpperCase()}:${this.device.productId.toString(16).padStart(4, '0').toUpperCase()}`;
+    }
+
+    /**
+     * Gets USB device information
+     * @returns {Object}
+     */
+    getUsbDeviceInfo() {
+        return {
+            vendorId: this.device.vendorId,
+            productId: this.device.productId,
+            productName: this.device.productName,
+            manufacturerName: this.device.manufacturerName,
+            serialNumber: this.device.serialNumber,
+            deviceVersionMajor: this.device.deviceVersionMajor,
+            deviceVersionMinor: this.device.deviceVersionMinor,
+            deviceVersionSubminor: this.device.deviceVersionSubminor,
+            usbVersionMajor: this.device.usbVersionMajor,
+            usbVersionMinor: this.device.usbVersionMinor,
+            usbVersionSubminor: this.device.usbVersionSubminor,
+            deviceClass: this.device.deviceClass,
+            deviceSubclass: this.device.deviceSubclass,
+            deviceProtocol: this.device.deviceProtocol,
+        };
+    }
+
+    /**
+     * Resets the interface.
+     * @returns {Promise<void>}
+     */
+    async resetInterface() {
+        try {
+            await this.connection.resetInterface();
+
+        } catch (e) {
+            console.error(`Failed to perform hard reset: ${e.message}`);
+            try {
+                await this.device.close();
+                console.log('Device closed');
+            } catch (e) {
+                console.error(`Failed to close device: ${e.message}`);
+            }
+        }
+
+        if (!this.connection) {
+            throw new ProtocolError('Not connected');
+        }
+    }
+
+    /**
+     * @param {number} addr
+     * @param {number} size
+     * @returns {Promise<Uint8Array>}
+     */
+    async flashRead(addr, size) {
+        const wasConnected = this.isConnected();
+        
+        if (!wasConnected) {
+            await this.connect();
+        }
+        
+        try {
+            await this.connection.resetInterface();
+
+            // Appears to be required on some RP2350 device
+            await this.connection.exitXip();
+
+            const data = await this.connection.flashRead(addr, size);
+            return data;
+        } finally {
+            if (!wasConnected) {
+                await this.disconnect();
+            }
+        }
+    }
+
+    /**
+     * @param {number} addr
+     * @param {Uint8Array} buf
+     * @returns {Promise<void>}
+     */
+    async flashWrite(addr, buf) {
+        const wasConnected = this.isConnected();
+        
+        if (!wasConnected) {
+            await this.connect();
+        }
+        
+        try {
+            await this.connection.resetInterface();
+
+            // Appears to be required on some RP2350 device
+            await this.connection.exitXip();
+
+            await this.connection.flashWrite(addr, buf);
+        } finally {
+            if (!wasConnected) {
+                await this.disconnect();
+            }
+        }
+    }
+
+    /**
+     * @param {number} addr
+     * @param {number} size
+     * @returns {Promise<void>}
+     */
+    async flashErase(addr, size) {
+        const wasConnected = this.isConnected();
+        
+        if (!wasConnected) {
+            await this.connect();
+        }
+        
+        try {
+            await this.connection.resetInterface();
+
+            // Appears to be required on some RP2350 device
+            await this.connection.exitXip();
+
+            await this.connection.flashErase(addr, size);
+        } finally {
+            if (!wasConnected) {
+                await this.disconnect();
+            }
+        }
+    }
+
+    /**
+     * Resets the interface and exits XIP on RP2040 before performing the
+     * operations.
+     * @param {number} addr
+     * @param {Uint8Array} buf
+     * @returns {Promise<void>}
+     */
+    async flashEraseAndWrite(addr, buf) {
+        const sectorSize = this.target.flashSectorSize();
+        const pageSize = this.target.flashPageSize();
+        
+        if (addr % sectorSize !== 0 || addr % pageSize !== 0) {
+            throw new ValidationError(
+                `Address ${addr.toString(16)} must be aligned to both sector and page size`,
+                this.target
+            );
+        }
+        
+        const eraseSize = Math.ceil(buf.length / sectorSize) * sectorSize;
+        
+        const wasConnected = this.isConnected();
+        
+        if (!wasConnected) {
+            await this.connect();
+        }
+        
+        try {
+            await this.connection.resetInterface();
+
+            // Appears to be required on some RP2350 device
+            await this.connection.exitXip();
+
+            await this.connection.flashErase(addr, eraseSize);
+            await this.connection.flashWrite(addr, buf);
+        } finally {
+            if (!wasConnected) {
+                await this.disconnect();
+            }
+        }
+    }
+
+    /**
+     * @param {number} flags
+     * @param {number} p0
+     * @param {number} p1
+     * @param {number} delayMs
+     * @returns {Promise<void>}
+     */
+    async rebootRp2350(flags, p0, p1, delayMs) {
+        const wasConnected = this.isConnected();
+
+        if (!wasConnected) {
+            await this.connect();
+        }
+
+        try {
+            await this.connection.rebootRp2350(flags, p0, p1, delayMs);
+        } finally {
+            if (!wasConnected) {
+                await this.disconnect();
+            }
+        }
+    }
+}
+
+// Copyright (C) 2025 Piers Finlayson <piers@piers.rocks>
+//
+// MIT License
+
+function decodeUF2Block(buffer) {
+    if (buffer.length !== 512) {
+        throw new Error('UF2 block must be 512 bytes');
+    }
+    
+    const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    
+    // Check magic numbers
+    const magic0 = view.getUint32(0, true);
+    const magic1 = view.getUint32(4, true);
+    const magicEnd = view.getUint32(508, true);
+    
+    if (magic0 !== 0x0A324655 || magic1 !== 0x9E5D5157 || magicEnd !== 0x0AB16F30) {
+        throw new Error('Invalid UF2 magic numbers');
+    }
+    
+    const payloadSize = view.getUint32(16, true);
+    
+    return {
+        flags: view.getUint32(8, true),
+        flashAddress: view.getUint32(12, true),
+        payloadSize: payloadSize,
+        blockNumber: view.getUint32(20, true),
+        totalBlocks: view.getUint32(24, true),
+        boardFamily: view.getUint32(28, true),
+        payload: new Uint8Array(buffer.buffer, buffer.byteOffset + 32, payloadSize)
+    };
+}
+
+/**
+ * UF2 标志位（Microsoft UF2 规范）。
+ * 携带以下标志的块不包含闪存数据，应被跳过：
+ * - 0x1000：文件容器
+ * - 0x8000：文件容器开始（多文件 UF2 的容器头）
+ * - 0x10000：文件容器结束
+ * - 0x20000：忽略此块
+ */
+const UF2_FLAG_FILE_CONTAINER = 0x1000;
+const UF2_FLAG_FILE_CONTAINER_START = 0x8000;
+const UF2_FLAG_FILE_CONTAINER_END = 0x10000;
+const UF2_FLAG_IGNORE = 0x20000;
+const UF2_SKIP_FLAGS =
+    UF2_FLAG_FILE_CONTAINER |
+    UF2_FLAG_FILE_CONTAINER_START |
+    UF2_FLAG_FILE_CONTAINER_END |
+    UF2_FLAG_IGNORE;
+
+function uf2ToFlashBuffer(uf2Data) {
+    // First pass - find address range and collect blocks
+    let minAddr = Infinity;
+    let maxAddr = 0;
+    const blocks = [];
+
+    for (let offset = 0; offset < uf2Data.length; offset += 512) {
+        const blockData = uf2Data.slice(offset, offset + 512);
+        try {
+            const block = decodeUF2Block(blockData);
+
+            // 跳过不携带闪存数据的容器/忽略块（如多文件 UF2 的容器头）
+            if (block.flags & UF2_SKIP_FLAGS) {
+                console.warn(`跳过容器/忽略块 #${block.blockNumber}（flags=0x${block.flags.toString(16)}）`);
+                continue;
+            }
+
+            blocks.push(block);
+            minAddr = Math.min(minAddr, block.flashAddress);
+            maxAddr = Math.max(maxAddr, block.flashAddress + block.payloadSize);
+        } catch (e) {
+            console.warn(`Invalid UF2 block at offset ${offset}: ${e.message}`);
+            throw new Error('UF2 file is corrupted or invalid');
+        }
+    }
+
+    // 没有任何可烧录的数据块
+    if (blocks.length === 0) {
+        throw new Error('UF2 file contains no flashable data blocks');
+    }
+
+    // Create buffer filled with 0xFF (erased flash state)
+    const size = maxAddr - minAddr;
+    const buffer = new Uint8Array(size);
+    buffer.fill(0xFF);
+    
+    // Second pass - copy data into buffer
+    for (const block of blocks) {
+        const offset = block.flashAddress - minAddr;
+        buffer.set(block.payload, offset);
+    }
+
+    console.log(`UF2 converted: Address range 0x${minAddr.toString(16)} - 0x${maxAddr.toString(16)}, Size: ${size} bytes, Blocks: ${blocks.length}`);
+
+    return { 
+        address: minAddr, 
+        data: buffer 
+    };
+}
+
+// Copyright (C) 2025 Piers Finlayson <piers@piers.rocks>
+//
+// MIT License
+
+//
+// 配置文件：固件地址与各项常量
+//
+
+/** @type {string} 获取最新固件 hash 的 KV 接口地址 */
+const FIRMWARE_HASH_URL = 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-latest-hash';
+
+/** @type {string} 固件 CDN 前缀，拼接 hash 与后缀得到完整下载地址 */
+const FIRMWARE_CDN_PREFIX = 'https://1833788059.cdn.123clouddisk.com/1833788059/direct/projects/pico-hid-mapper/pico-hid-mapper-';
+
+/** @type {string} 固件文件后缀 */
+const FIRMWARE_CDN_SUFFIX = '.uf2';
+
+/** @type {number} 网络获取固件的超时时间（毫秒） */
+const FETCH_TIMEOUT = 30000;
+
+/** @type {number} USB 操作默认超时（毫秒） */
+const DEFAULT_USB_TIMEOUT = 5000;
+
+/** @type {number} 烧录（擦除+写入）综合速度（字节/秒） */
+const FLASH_SPEED = 80 * 1024;
+
+/** @type {number} 重启延迟（毫秒） */
+const DEFAULT_REBOOT_DELAY = 100;
+
+/** @type {number} 短 SHA-256 校验值取前几位十六进制字符 */
+const SHA256_SHORT_LENGTH = 8;
+
+// Copyright (C) 2025 Piers Finlayson <piers@piers.rocks>
+//
+// MIT License
+
+//
+// Imports（浏览器从服务根解析绝对路径）
+//
+
+//
+// Type definitions
+//
+
+/**
+ * @typedef {Object} FirmwareData
+ * @property {string} name
+ * @property {number} address
+ * @property {Uint8Array} data
+ * @property {number} origSize
+ * @property {string} fileType
+ * @property {number} downloadSpeed 下载网速（字节/秒）
+ * @property {string} sha256Short 下载固件的短 SHA-256 校验值（小写十六进制）
+ */
+
+//
+// Globals
+//
+
+/** @type {Picoboot} */
+let picoboot = null;
+/** @type {Connection} */
+let connection = null;
+/** @type {string} */
+let lastStatus = null;
+/** @type {boolean} 是否正在执行获取/烧录/重启等操作（防止重复点击） */
+let busy = false;
+
+// Progress bar
+/** @type {number} */
+let progressPercent = 0;
+/** @type {HTMLElement} */
+const progressFill = document.getElementById('progressFill');
+
+// 连接按钮
+const connectBtn = /** @type {HTMLButtonElement} */ (document.getElementById('connectBtn'));
+
+// 状态行
+/** @type {HTMLElement} */
+const statusLine = document.getElementById('statusLine');
+
+// 设备信息面板
+/** @type {HTMLElement} */
+const deviceInfoPanel = document.getElementById('deviceInfoPanel');
+/** @type {HTMLElement} */
+const deviceTarget = document.getElementById('deviceTarget');
+/** @type {HTMLElement} */
+const deviceVidPid = document.getElementById('deviceVidPid');
+/** @type {HTMLElement} */
+const deviceManufacturer = document.getElementById('deviceManufacturer');
+/** @type {HTMLElement} */
+const deviceProduct = document.getElementById('deviceProduct');
+/** @type {HTMLElement} */
+const deviceSerial = document.getElementById('deviceSerial');
+/** @type {HTMLElement} */
+const deviceUsbVersion = document.getElementById('deviceUsbVersion');
+/** @type {HTMLElement} */
+const deviceDeviceVersion = document.getElementById('deviceDeviceVersion');
+/** @type {HTMLElement} */
+const deviceFlashRange = document.getElementById('deviceFlashRange');
+/** @type {HTMLElement} */
+const deviceSector = document.getElementById('deviceSector');
+/** @type {HTMLElement} */
+const devicePage = document.getElementById('devicePage');
+
+// 烧录操作
+const flashBtn = /** @type {HTMLButtonElement} */ (document.getElementById('flashBtn'));
+
+// 活动日志
+/** @type {HTMLElement} */
+const activityContent = document.getElementById('activityContent');
+
+//
+// 日志与格式化
+//
+
+/**
+ * 启动代码。
+ * @return {void}
+ */
+function startup() {
+    // 记录已加载
+    logActivity('picoflash 已加载', 'info');
+
+    // 更新界面
+    updateUi();
+}
+
+/**
+ * 把字节数格式化为可读字符串。
+ * @param {number} bytes
+ * @returns {string}
+ */
+function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+/**
+ * 把网速（字节/秒）格式化为可读字符串。
+ * @param {number} bps
+ * @returns {string}
+ */
+function formatSpeed(bps) {
+    if (bps >= 1024 * 1024) return (bps / (1024 * 1024)).toFixed(2) + ' MB/s';
+    return (bps / 1024).toFixed(1) + ' KB/s';
+}
+
+/**
+ * 写入一条活动日志（同时写入控制台）。
+ * @param {string} message
+ * @param {string} type
+ * @return {void}
+ */
+function logActivity(message, type = 'info') {
+    const timestamp = new Date().toLocaleTimeString();
+    const entry = document.createElement('div');
+    entry.className = `log-entry log-${type}`;
+    entry.textContent = `[${timestamp}] ${message}`;
+
+    if (type === 'error') {
+        console.error(entry.textContent);
+    } else {
+        console.log(entry.textContent);
+    }
+
+    activityContent.appendChild(entry);
+    activityContent.scrollTop = activityContent.scrollHeight; // 自动滚动到底部
+}
+
+/**
+ * 是否已建立完整连接。
+ * @returns {boolean}
+ */
+function connected() {
+    return (connection != null && picoboot != null);
+}
+
+/**
+ * 是否已选择设备（即使连接失败也算）。
+ * @returns {boolean}
+ */
+function hasDevice() {
+    return picoboot != null;
+}
+
+/**
+ * 更新状态显示。
+ * @param {string} message
+ * @return {void}
+ */
+function updateStatus(message) {
+    lastStatus = message;
+    updateStatusDisplay();
+}
+
+/**
+ * 计算烧录接口在某目标上的 Flash 结束地址。
+ * @param {import('/pkg/target.js').Target} target
+ * @returns {number|null}
+ */
+function flashEndForTarget(target) {
+    if (target.type === 'RP2040') return 0x11000000;
+    if (target.type === 'RP2350') return 0x12000000;
+    return null;
+}
+
+/**
+ * 填充设备信息面板。
+ * @return {void}
+ */
+function updateDeviceInfo() {
+    if (!picoboot) {
+        deviceInfoPanel.classList.add('hidden');
+        return;
+    }
+
+    const info = picoboot.getUsbDeviceInfo();
+    const target = picoboot.getTarget();
+    const flashEnd = flashEndForTarget(target);
+
+    deviceTarget.textContent = target.toString();
+    deviceVidPid.textContent = `${info.vendorId.toString(16).padStart(4, '0')}:${info.productId.toString(16).padStart(4, '0')}`;
+    deviceManufacturer.textContent = info.manufacturerName || '-';
+    deviceProduct.textContent = info.productName || '-';
+    deviceSerial.textContent = info.serialNumber || '-';
+    deviceUsbVersion.textContent = `${info.usbVersionMajor}.${info.usbVersionMinor}.${info.usbVersionSubminor}`;
+    deviceDeviceVersion.textContent = `${info.deviceVersionMajor}.${info.deviceVersionMinor}.${info.deviceVersionSubminor}`;
+    deviceFlashRange.textContent = `0x${target.flashStart().toString(16)} - ${flashEnd ? `0x${flashEnd.toString(16)}` : '--'}`;
+    deviceSector.textContent = formatBytes(target.flashSectorSize());
+    devicePage.textContent = formatBytes(target.flashPageSize());
+
+    deviceInfoPanel.classList.remove('hidden');
+}
+
+/**
+ * 更新进度条显示。
+ * @param {boolean} error
+ * @return {void}
+ */
+function updateProgress(error = false) {
+    if (!connected()) {
+        progressPercent = 0;
+    }
+
+    progressFill.style.width = `${progressPercent}%`;
+
+    if (error) {
+        progressFill.style.backgroundColor = 'var(--color-danger)';
+    } else {
+        progressFill.style.backgroundColor = 'var(--color-accent)';
+    }
+}
+
+//
+// 按钮状态
+//
+
+/**
+ * 更新连接按钮。
+ * @return {void}
+ */
+function updateConnectBtn() {
+    connectBtn.disabled = busy;
+    connectBtn.textContent = connected() ? '断开连接' : '连接设备';
+}
+
+/**
+ * 更新烧录按钮。每次烧录时都会重新拉取固件，因此只要不忙即可点击。
+ * @return {void}
+ */
+function updateFlashBtn() {
+    flashBtn.disabled = busy;
+}
+
+/**
+ * 更新状态行。
+ * @return {void}
+ */
+function updateStatusDisplay() {
+    let statusText = '未连接';
+    if (lastStatus) {
+        statusText = lastStatus;
+    } else if (connected()) {
+        statusText = '已连接';
+    }
+    statusLine.textContent = statusText;
+}
+
+/**
+ * 更新全部界面元素。
+ * @return {void}
+ */
+function updateUi() {
+    updateStatusDisplay();
+    updateDeviceInfo();
+    updateConnectBtn();
+    updateFlashBtn();
+    updateProgress();
+}
+
+//
+// 超时与进度工具
+//
+
+/**
+ * 给一个 Promise 包装超时。
+ * @param {() => Promise<any>} promiseFn
+ * @param {number} timeoutMs
+ * @param {string} operation
+ * @returns {Promise<any>}
+ */
+async function withTimeout(promiseFn, timeoutMs, operation) {
+    // 超时时间按 100ms 取整
+    const roundedTimeout = Math.round(timeoutMs / 100) * 100;
+
+    return Promise.race([
+        promiseFn(),
+        new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`${operation} 超时（${roundedTimeout}ms）`)), roundedTimeout)
+        ),
+    ]);
+}
+
+/**
+ * 给一个 Promise 包装默认超时。
+ * @param {() => Promise<any>} promiseFn
+ * @param {string} operation
+ * @returns {Promise<any>}
+ */
+async function withDefaultTimeout(promiseFn, operation = '操作') {
+    return withTimeout(promiseFn, DEFAULT_USB_TIMEOUT, operation);
+}
+
+/**
+ * 计算基于数据长度和速度的预计耗时。
+ * @param {number} length
+ * @param {number} bps
+ * @returns {number}
+ */
+function calcTimeout(length, bps) {
+    const timeoutMs = 1000 * length / bps;
+
+    const timeoutFixed = timeoutMs + 5000; // 加 5 秒缓冲
+    const timeoutVar = timeoutFixed * 1.1; // 10% 余量
+
+    const max = Math.max(timeoutFixed, timeoutVar);
+
+    console.log(`预计耗时：固定 ${timeoutFixed}ms，余量 ${timeoutVar}ms，使用 ${max}ms`);
+
+    return max;
+}
+
+/**
+ * 初始化进度条并启动定时更新。
+ * @param {number} length
+ * @param {number} bps
+ * @returns {number}
+ */
+function setupProgressInterval(length, bps) {
+    progressPercent = 1;
+    updateProgress();
+
+    const estimatedTimeMs = (length / bps) * 1000;
+
+    const startTime = Date.now();
+    return setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const estimatedProgress = Math.min(95, Math.floor((elapsed / estimatedTimeMs) * 100));
+        progressPercent = estimatedProgress;
+        updateProgress();
+    }, 100);
+}
+
+/**
+ * 停止进度定时器并设置最终百分比。
+ * @param {number} intervalId
+ * @param {number} percent
+ * @param {boolean} error
+ * @return {void}
+ */
+function clearProgressInterval(intervalId, percent, error = false) {
+    clearInterval(intervalId);
+    progressPercent = percent;
+    updateProgress(error);
+}
+
+//
+// 设备连接
+//
+
+/**
+ * 连接设备：请求授权、填充设备信息、建立连接。
+ * @returns {Promise<void>}
+ */
+async function connect() {
+    updateStatus('连接中…');
+
+    // 请求用户选择设备
+    try {
+        picoboot = await Picoboot.requestDevice();
+        console.log('已选择设备：', picoboot.getTarget().toString());
+    } catch (error) {
+        if (error.message.includes('cancelled')) {
+            updateStatus('未选择设备');
+            logActivity('设备选择已取消', 'info');
+        } else if (error.message.includes('not supported') && error.message.includes('browser')) {
+            updateStatus('浏览器不支持 WebUSB');
+            logActivity('错误：浏览器不支持 WebUSB', 'error');
+        } else {
+            updateStatus('连接错误');
+            logActivity(`错误：${error.message}`, 'error');
+        }
+        return;
+    }
+
+    // 立即填充设备信息（requestDevice 后即可用）
+    updateDeviceInfo();
+
+    // 建立连接
+    try {
+        const info = picoboot.getUsbDeviceInfo();
+        logActivity(`已选择：${picoboot.getTarget().toString()} - ${info.manufacturerName || '-'} ${info.productName || '-'}`, 'info');
+
+        connection = await withDefaultTimeout(
+            async () => picoboot.connect(),
+            '连接设备'
+        );
+        await withDefaultTimeout(
+            async () => picoboot.resetInterface(),
+            '重置接口'
+        );
+
+        logActivity('连接成功', 'success');
+        updateStatus('已连接');
+    } catch (e) {
+        logActivity(`错误：${e.message}`, 'error');
+        connection = null;
+        picoboot = null;
+        updateStatus('连接错误');
+    }
+}
+
+/**
+ * 断开连接。失败时抛出错误。
+ * @returns {Promise<void>}
+ */
+async function disconnect() {
+    if (!connected()) {
+        connection = null;
+        picoboot = null;
+        console.log('没有已连接的设备');
+        throw new Error('没有已连接的设备');
+    }
+
+    try {
+        await withDefaultTimeout(
+            async () => picoboot.disconnect(),
+            '断开连接'
+        );
+        console.log('已断开连接');
+    } catch (error) {
+        console.log(`断开连接时出错：${error.message}`);
+        connection = null;
+        picoboot = null;
+        throw error;
+    }
+
+    connection = null;
+    picoboot = null;
+}
+
+/**
+ * 断开连接，不抛错。
+ * @returns {Promise<void>}
+ */
+async function disconnectNoThrow() {
+    try {
+        await disconnect();
+        updateStatus('已断开连接');
+        logActivity('已断开连接', 'success');
+    } catch (error) {
+        updateStatus('断开连接出错');
+        logActivity(`断开连接出错：${error.message}`, 'error');
+    }
+}
+
+/**
+ * 检查是否已连接，未连接则尝试连接。
+ * @returns {Promise<boolean>}
+ */
+async function checkAndTryConnect() {
+    if (connected()) {
+        return true;
+    }
+
+    await connect();
+    updateUi();
+
+    if (connected()) {
+        return true;
+    } else {
+        logActivity('未连接设备，无法继续', 'error');
+        updateStatus('未连接设备');
+        return false;
+    }
+}
+
+/**
+ * 重启设备到应用程序，然后断开连接。
+ * 由烧录流程在烧录成功后自动调用。
+ * 出错时不抛异常，只记录日志。
+ * @returns {Promise<void>}
+ */
+async function rebootAndDisconnect() {
+    updateStatus('正在重启…');
+
+    let rebootFailed = true;
+    try {
+        await withDefaultTimeout(
+            async () => connection.reboot(DEFAULT_REBOOT_DELAY),
+            '重启设备'
+        );
+        rebootFailed = false;
+    } catch (error) {
+        logActivity(`重启出错：${error.message}`, 'error');
+    }
+
+    // 无论重启成功与否都断开连接
+    try {
+        await withDefaultTimeout(
+            async () => picoboot.disconnect(),
+            '断开连接'
+        );
+    } catch (error) {
+        logActivity(`断开连接出错：${error.message}`, 'error');
+        if (!rebootFailed) {
+            updateStatus('断开连接出错');
+        }
+    }
+
+    connection = null;
+    picoboot = null;
+
+    if (rebootFailed) {
+        updateStatus('重启失败');
+    } else {
+        logActivity('设备已重启', 'success');
+        updateStatus('已重启（已断开）');
+    }
+}
+
+//
+// 固件获取
+//
+
+/**
+ * 给 URL 追加一个不同的时间戳参数，保证每次请求不命中缓存。
+ * @param {string} url
+ * @returns {string}
+ */
+function addCacheBuster(url) {
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}t=${Date.now()}`;
+}
+
+/**
+ * 从固定 URL 拉取并解析 UF2 固件。
+ * 每次调用都会带新的缓存规避参数；失败时抛错。
+ * @returns {Promise<FirmwareData>}
+ */
+async function fetchFirmwareData() {
+    logActivity('获取固件中…', 'info');
+
+    // 1. 获取最新版本 hash
+    const hashUrl = addCacheBuster(FIRMWARE_HASH_URL);
+    const hashRes = await withTimeout(
+        async () => fetch(hashUrl, { cache: 'no-store' }),
+        FETCH_TIMEOUT,
+        '获取版本'
+    );
+
+    if (!hashRes.ok) {
+        throw new Error(`获取版本失败：HTTP ${hashRes.status}`);
+    }
+
+    const hashJson = await hashRes.json();
+    const hash = hashJson.value;
+    if (!hash) {
+        throw new Error('版本接口未返回 hash');
+    }
+
+    // 2. 用 hash 拼接固件地址并下载
+    const firmwareUrl = `${FIRMWARE_CDN_PREFIX}${hash}${FIRMWARE_CDN_SUFFIX}`;
+    const startTime = Date.now();
+    const res = await withTimeout(
+        async () => fetch(addCacheBuster(firmwareUrl), { cache: 'no-store' }),
+        FETCH_TIMEOUT,
+        '获取固件'
+    );
+
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    }
+
+    const uf2Data = new Uint8Array(await res.arrayBuffer());
+    const elapsedMs = Date.now() - startTime;
+    const downloadSpeed = elapsedMs > 0 ? (uf2Data.length * 1000) / elapsedMs : 0;
+
+    // 对下载的 UF2 字节计算 SHA-256，取前几位作为校验值
+    const hashBuf = await crypto.subtle.digest('SHA-256', uf2Data);
+    const hashHex = Array.from(new Uint8Array(hashBuf))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    const sha256Short = hashHex.slice(0, SHA256_SHORT_LENGTH);
+
+    const { address, data } = uf2ToFlashBuffer(uf2Data);
+
+    const fileName = `pico-hid-mapper-${hash}.uf2`;
+    return { name: fileName, address, data, origSize: uf2Data.length, fileType: 'uf2', downloadSpeed, sha256Short };
+}
+
+//
+// 烧录
+//
+
+/**
+ * 烧录流程：每次点击都先重新拉取固件，再连接设备并烧录，成功后自动重启。
+ * @returns {Promise<void>}
+ */
+async function flash() {
+    if (busy) return;
+
+    busy = true;
+    updateUi();
+    updateStatus('正在获取固件…');
+
+    // 1. 每次烧录都重新拉取固件（带新的缓存规避参数）
+    let firmware;
+    try {
+        firmware = await fetchFirmwareData();
+        logActivity(`固件获取成功：[${firmware.sha256Short}] ${formatBytes(firmware.origSize)} , ${formatSpeed(firmware.downloadSpeed)} ，flashSize ${formatBytes(firmware.data.length)}`, 'success');
+    } catch (error) {
+        logActivity(`获取固件失败：${error.message}`, 'error');
+        updateStatus('获取固件失败');
+        busy = false;
+        updateUi();
+        return;
+    }
+
+    // 2. 连接设备（未连接则先请求选择设备）
+    if (!(await checkAndTryConnect())) {
+        busy = false;
+        updateUi();
+        return;
+    }
+
+    // 3. 烧录
+    updateStatus('正在烧录…');
+
+    // 初始化进度条并计算预计耗时
+    const progressInterval = setupProgressInterval(firmware.data.length, FLASH_SPEED);
+    const timeoutMs = calcTimeout(firmware.data.length, FLASH_SPEED);
+
+    try {
+        logActivity(`正在烧录 ${firmware.name}（${formatBytes(firmware.data.length)}）…`, 'info');
+        await withTimeout(
+            async () => picoboot.flashEraseAndWrite(firmware.address, firmware.data),
+            timeoutMs,
+            '烧录固件'
+        );
+
+        clearProgressInterval(progressInterval, 100);
+
+        logActivity('烧录成功', 'success');
+        updateStatus('烧录完成');
+
+        // 烧录成功后自动重启设备
+        await rebootAndDisconnect();
+    } catch (error) {
+        clearProgressInterval(progressInterval, 100, true);
+        logActivity(`烧录失败：${error.message}`, 'error');
+        if (await tryRecover()) {
+            updateStatus('烧录失败');
+        } else {
+            updateStatus('烧录失败（已断开）');
+        }
+    } finally {
+        busy = false;
+        updateUi();
+    }
+}
+
+//
+// 错误恢复（低层 PICOBOOT 操作）
+//
+
+/**
+ * 尝试在超时或出错后恢复 Pico 连接。
+ * 先查询 GET_COMMAND_STATUS，再尝试重置接口。
+ * 两者都失败则断开设备。
+ * 不抛错，返回 true 表示恢复成功，false 表示已断开。
+ * @returns {Promise<boolean>}
+ */
+async function tryRecover() {
+    logActivity('正在尝试恢复连接…', 'info');
+
+    // 先查一次命令状态
+    try {
+        const status = await getCommandStatus();
+        if (!status.isOk()) {
+            logActivity(`Pico 设备报告错误状态：${status.getStatusName()}`, 'warning');
+        } else {
+            logActivity(`Pico 设备状态：${status.getStatusName()}`, 'info');
+        }
+    } catch (e) {
+        logActivity('查询状态失败，尝试重置…', 'warning');
+    }
+
+    // 再尝试重置连接
+    try {
+        await reset();
+        logActivity('连接恢复成功', 'success');
+        return true;
+    } catch (e) {
+        logActivity('连接无法恢复，正在断开', 'error');
+        try {
+            await disconnect();
+        } catch {
+            // 忽略断开时的错误
+        }
+        return false;
+    }
+}
+
+/**
+ * 向设备发送 GET_COMMAND_STATUS。
+ * 底层函数，只写控制台，抛错。
+ * @returns {Promise<PicobootStatusCmd>}
+ */
+async function getCommandStatus() {
+    if (!connected()) {
+        console.log('没有已连接设备，无法查询命令状态');
+        throw new Error('没有已连接设备');
+    }
+
+    try {
+        console.log('正在查询命令状态…');
+
+        const status = await withDefaultTimeout(
+            async () => connection.getCommandStatus(),
+            '查询命令状态'
+        );
+
+        console.log(`命令状态：${status.getStatusName()}`);
+
+        return status;
+    } catch (error) {
+        console.log('查询命令状态出错');
+        if (error.name === 'StatusError') {
+            let statusError;
+            try {
+                statusError = error.status.getStatusName();
+            } catch {
+                statusError = 'unknown';
+            }
+            console.log(`Pico 设备报告错误状态：${statusError}`);
+        } else {
+            console.log(`查询命令状态时出错：${error.message}`);
+        }
+
+        // 继续向上抛
+        throw error;
+    }
+}
+
+/**
+ * 向设备发送重置接口命令。
+ * 底层函数，只写控制台，抛错。
+ * @returns {Promise<void>}
+ */
+async function reset() {
+    if (!connected()) {
+        console.log('没有已连接设备，无法重置');
+        throw new Error('没有已连接设备');
+    }
+
+    try {
+        console.log('正在重置连接…');
+        await withDefaultTimeout(
+            async () => picoboot.resetInterface(),
+            '重置接口'
+        );
+        console.log('连接重置成功');
+    } catch (error) {
+        console.log(`重置连接时出错：${error.message}`);
+        throw error;
+    }
+}
+
+//
+// 事件绑定
+//
+
+connectBtn.addEventListener('click', async () => {
+    if (busy) return;
+
+    if (connection) {
+        await disconnectNoThrow();
+    } else {
+        await connect();
+    }
+
+    updateUi();
+});
+
+flashBtn.addEventListener('click', async () => {
+    await flash();
+});
+
+//
+// 启动
+//
+
+startup();
+</script>
+</body>
+
+</html>
