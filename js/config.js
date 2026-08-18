@@ -12,6 +12,9 @@ export const FIRMWARE_STABLE_HASH_URL = 'https://kvstore.rd5isto.org/api/kv/pico
 /** @type {string} 获取最新版固件 hash 的 KV 接口地址 */
 export const FIRMWARE_LATEST_HASH_URL = 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-latest-hash';
 
+/** @type {string} 稳定版固件版本号 KV 接口地址（KV key 沿用 pico-hid-mapper-latest-version） */
+export const FIRMWARE_STABLE_VERSION_URL = 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-latest-version';
+
 /** @type {string} 固件 CDN 前缀，拼接 hash 与后缀得到完整下载地址 */
 export const FIRMWARE_CDN_PREFIX = 'https://1833788059.cdn.123clouddisk.com/1833788059/direct/projects/pico-hid-mapper/pico-hid-mapper-';
 

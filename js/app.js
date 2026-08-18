@@ -13,6 +13,7 @@ import { uf2ToFlashBuffer } from './uf2/uf2.js';
 import {
     FIRMWARE_STABLE_HASH_URL,
     FIRMWARE_LATEST_HASH_URL,
+    FIRMWARE_STABLE_VERSION_URL,
     FIRMWARE_CDN_PREFIX,
     FIRMWARE_CDN_SUFFIX,
     FETCH_TIMEOUT,
@@ -35,6 +36,7 @@ import {
  * @property {string} fileType
  * @property {number} downloadSpeed 下载网速（字节/秒）
  * @property {string} sha256Short 下载固件的短 SHA-256 校验值（小写十六进制）
+ * @property {string|null} version 稳定版固件版本号（仅稳定版渠道；最新版为 null）
  */
 
 //
@@ -615,6 +617,30 @@ function addCacheBuster(url) {
 }
 
 /**
+ * 获取稳定版固件版本号（仅稳定版渠道有版本标签）。
+ * 失败时返回 null，不抛错——版本号只用于日志展示，不影响烧录。
+ * @returns {Promise<string|null>}
+ */
+async function fetchFirmwareVersion() {
+    const url = addCacheBuster(FIRMWARE_STABLE_VERSION_URL);
+    try {
+        const res = await withTimeout(
+            async () => fetch(url, { cache: 'no-store' }),
+            FETCH_TIMEOUT,
+            '获取版本号'
+        );
+        if (!res.ok) {
+            return null;
+        }
+        const json = await res.json();
+        const value = json.value;
+        return (typeof value === 'string' && value) ? value : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
  * 从固定 URL 拉取并解析 UF2 固件。
  * 每次调用都会带新的缓存规避参数；失败时抛错。
  * @returns {Promise<FirmwareData>}
@@ -666,8 +692,14 @@ async function fetchFirmwareData() {
 
     const { address, data } = uf2ToFlashBuffer(uf2Data);
 
+    // 3. 稳定版渠道附带获取版本号（仅日志展示用，失败不影响烧录）
+    let version = null;
+    if (firmwareChannel === 'stable') {
+        version = await fetchFirmwareVersion();
+    }
+
     const fileName = `pico-hid-mapper-${hash}.uf2`;
-    return { name: fileName, address, data, origSize: uf2Data.length, fileType: 'uf2', downloadSpeed, sha256Short };
+    return { name: fileName, address, data, origSize: uf2Data.length, fileType: 'uf2', downloadSpeed, sha256Short, version };
 }
 
 //
@@ -713,7 +745,8 @@ async function flash() {
     const timeoutMs = calcTimeout(firmware.data.length, FLASH_SPEED);
 
     try {
-        logActivity(`正在烧录 ${firmware.name}（${formatBytes(firmware.data.length)}）…`, 'info');
+        const firmwareLabel = firmware.version || `[${firmware.sha256Short}]`;
+        logActivity(`正在烧录 ${firmwareLabel}（${formatBytes(firmware.data.length)}）…`, 'info');
         await withTimeout(
             async () => picoboot.flashEraseAndWrite(firmware.address, firmware.data),
             timeoutMs,
