@@ -9,6 +9,7 @@
 import { Picoboot } from '../pkg/picoboot.js';
 import { Connection } from '../pkg/connection.js';
 import { PicobootStatusCmd } from '../pkg/commands.js';
+import { FLASH_START } from '../pkg/constants.js';
 import { uf2ToFlashBuffer } from './uf2/uf2.js';
 import {
     FIRMWARE_STABLE_HASH_URL,
@@ -97,6 +98,7 @@ const devicePage = document.getElementById('devicePage');
 
 // 烧录操作
 const flashBtn = /** @type {HTMLButtonElement} */ (document.getElementById('flashBtn'));
+const eraseBtn = /** @type {HTMLButtonElement} */ (document.getElementById('eraseBtn'));
 
 // 活动日志
 /** @type {HTMLElement} */
@@ -275,6 +277,14 @@ function updateFlashBtn() {
 }
 
 /**
+ * 更新清空flash按钮。
+ * @return {void}
+ */
+function updateEraseBtn() {
+    eraseBtn.disabled = busy;
+}
+
+/**
  * 更新状态行。
  * @return {void}
  */
@@ -297,6 +307,7 @@ function updateUi() {
     updateDeviceInfo();
     updateConnectBtn();
     updateFlashBtn();
+    updateEraseBtn();
     updateProgress();
 }
 
@@ -775,6 +786,97 @@ async function flash() {
 }
 
 //
+// 清空flash
+//
+
+/**
+ * 清空flash流程：擦除整片 flash 地址窗口（固件 + 所有已存数据）。
+ * 擦除前弹出二次确认；擦除后不重启（flash 已空，无固件可运行），
+ * 直接断开连接，设备保持 BOOTSEL 模式，等待重新烧录。
+ * @returns {Promise<void>}
+ */
+async function eraseFlash() {
+    if (busy) return;
+
+    // 二次确认放在 busy=true 之前，取消时不闪禁用态
+    const ok = window.confirm('清空flash 将擦除整片 flash：固件和所有已保存的数据都会被删除，设备将无法启动，之后必须重新烧录固件。\n\n擦除后设备保持 BOOTSEL 模式。确定继续吗？');
+    if (!ok) {
+        logActivity('已取消清空flash', 'info');
+        return;
+    }
+
+    busy = true;
+    updateUi();
+
+    // 连接设备（未连接则先请求选择设备）
+    if (!(await checkAndTryConnect())) {
+        busy = false;
+        updateUi();
+        return;
+    }
+
+    // 计算擦除范围：整片 flash 地址窗口
+    const target = picoboot.getTarget();
+    const flashEnd = flashEndForTarget(target);
+    if (flashEnd == null) {
+        logActivity(`未知目标（${target.toString()}），无法确定 flash 范围，已取消`, 'error');
+        updateStatus('清空已取消');
+        busy = false;
+        updateUi();
+        return;
+    }
+
+    const start = FLASH_START;
+    const size = flashEnd - start;
+
+    updateStatus('正在清空flash…');
+
+    // 初始化进度条并计算预计耗时（整片擦除较慢，可能需要几分钟）
+    const progressInterval = setupProgressInterval(size, FLASH_SPEED);
+    const timeoutMs = calcTimeout(size, FLASH_SPEED);
+
+    try {
+        logActivity(`正在清空 flash：0x${start.toString(16)} - 0x${flashEnd.toString(16)}（${formatBytes(size)}）…`, 'info');
+        await withTimeout(
+            async () => picoboot.flashErase(start, size),
+            timeoutMs,
+            '清空flash'
+        );
+
+        clearProgressInterval(progressInterval, 100);
+
+        logActivity('清空完成', 'success');
+        logActivity('flash 已全部擦除，设备保持 BOOTSEL 模式，请重新烧录固件', 'warning');
+        updateStatus('清空完成');
+
+        // 不重启：flash 已空，无固件可运行；直接断开，设备留在 BOOTSEL。
+        // 不能复用 disconnectNoThrow()——它会把状态行覆盖成「已断开连接」
+        try {
+            await withDefaultTimeout(
+                async () => picoboot.disconnect(),
+                '断开连接'
+            );
+        } catch (error) {
+            logActivity(`断开连接出错：${error.message}`, 'warning');
+        } finally {
+            connection = null;
+            picoboot = null;
+        }
+    } catch (error) {
+        clearProgressInterval(progressInterval, 100, true);
+        logActivity(`清空失败：${error.message}`, 'error');
+        if (await tryRecover()) {
+            updateStatus('清空失败');
+        } else {
+            updateStatus('清空失败（已断开）');
+        }
+    } finally {
+        busy = false;
+        updateUi();
+    }
+}
+
+//
 // 错误恢复（低层 PICOBOOT 操作）
 //
 
@@ -899,6 +1001,10 @@ connectBtn.addEventListener('click', async () => {
 
 flashBtn.addEventListener('click', async () => {
     await flash();
+});
+
+eraseBtn.addEventListener('click', async () => {
+    await eraseFlash();
 });
 
 versionStableBtn.addEventListener('click', () => {

@@ -134,6 +134,12 @@ body {
     color: var(--color-text-primary);
 }
 
+.btn-danger {
+    background-color: var(--color-danger);
+    border-color: var(--color-danger);
+    color: #ffffff;
+}
+
 /* 烧录卡片头部：标题 + 版本切换 */
 .card-header {
     display: flex;

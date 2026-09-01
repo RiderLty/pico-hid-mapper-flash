@@ -65,8 +65,8 @@ const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
 
 // 把外链样式与外部模块脚本替换为内联
 const bundledHtml = html
-    .replace('<link rel="stylesheet" href="/style.css">', `<style>\n${css}\n</style>`)
-    .replace('<script type="module" src="/js/app.js"></script>', `<script type="module">\n${js}\n</script>`);
+    .replace('<link rel="stylesheet" href="./style.css">', `<style>\n${css}\n</style>`)
+    .replace('<script type="module" src="./js/app.js"></script>', `<script type="module">\n${js}\n</script>`);
 
 // 校验：打包后不应再有任何外部模块引用
 const leftover = bundledHtml.match(/<script[^>]*src=|<link[^>]*rel="stylesheet"[^>]*href=/g);
