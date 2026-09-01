@@ -2165,6 +2165,9 @@ const FLASH_SPEED = 80 * 1024;
 /** @type {number} 重启延迟（毫秒） */
 const DEFAULT_REBOOT_DELAY = 100;
 
+/** @type {number} 板上 flash 芯片实际容量（字节），用于容量显示与整片擦除 */
+const FLASH_SIZE = 2 * 1024 * 1024;
+
 /** @type {number} 短 SHA-256 校验值取前几位十六进制字符 */
 const SHA256_SHORT_LENGTH = 8;
 
@@ -2204,9 +2207,6 @@ let connection = null;
 let lastStatus = null;
 /** @type {boolean} 是否正在执行获取/烧录/重启等操作（防止重复点击） */
 let busy = false;
-
-/** @type {number|null} 连接时检测到的 flash 实际容量（字节）；未检测/无法检测为 null */
-let flashSize = null;
 
 /** @type {'stable'|'latest'} 当前固件版本渠道 */
 let firmwareChannel = 'stable';
@@ -2266,20 +2266,6 @@ const versionLatestBtn = /** @type {HTMLButtonElement} */ (document.getElementBy
 //
 // 日志与格式化
 //
-
-/**
- * 比较两个 Uint8Array 是否内容相同。
- * @param {Uint8Array} a
- * @param {Uint8Array} b
- * @returns {boolean}
- */
-function bytesEqual(a, b) {
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-        if (a[i] !== b[i]) return false;
-    }
-    return true;
-}
 
 /**
  * 启动代码。
@@ -2367,73 +2353,6 @@ function updateStatus(message) {
 }
 
 /**
- * 计算烧录接口在某目标上的 Flash 结束地址。
- * @param {import('../pkg/target.js').Target} target
- * @returns {number|null}
- */
-function flashEndForTarget(target) {
-    if (target.type === 'RP2040') return 0x11000000;
-    if (target.type === 'RP2350') return 0x12000000;
-    return null;
-}
-
-/**
- * 检测 flash 实际容量。
- * 移植 picotool 的 guess_flash_size()：flash 读取按芯片实际容量回绕
- * （超出容量的地址被 flash 芯片掩码回起始处），因此从大到小探测
- * 2 的幂偏移，首个与首两页内容不同的偏移 ×2 即为实际容量。
- * 失败/无法判断时返回 null，不抛错。
- * @returns {Promise<number|null>}
- */
-async function detectFlashSize() {
-    if (!connected()) return null;
-
-    const target = picoboot.getTarget();
-    const flashEnd = flashEndForTarget(target);
-    if (flashEnd == null) return null;
-
-    const start = target.flashStart();
-    const pageSize = target.flashPageSize();
-    const windowSize = flashEnd - start;
-    const probeSize = 2 * pageSize;
-
-    try {
-        await withDefaultTimeout(async () => picoboot.resetInterface(), '重置接口');
-        await withDefaultTimeout(async () => connection.exitXip(), '退出XIP');
-
-        const basePages = await withDefaultTimeout(
-            async () => connection.flashRead(start, probeSize),
-            '读取flash首页'
-        );
-
-        // 全 0xFF（空白 flash）或前两页相同：无法判断（与 picotool 一致）
-        let allFF = true;
-        for (const b of basePages) {
-            if (b !== 0xFF) { allFF = false; break; }
-        }
-        if (allFF) return null;
-        if (bytesEqual(basePages.slice(0, pageSize), basePages.slice(pageSize))) return null;
-
-        // 从地址窗口的一半开始向下探测（保持探测地址在 XIP 窗口内）
-        for (let size = windowSize / 2; size >= 16 * pageSize; size >>= 1) {
-            const pages = await withDefaultTimeout(
-                async () => connection.flashRead(start + size, probeSize),
-                '探测flash大小'
-            );
-            if (!bytesEqual(basePages, pages)) {
-                const detected = size * 2;
-                // 过小的结果不可信（内容异常时误判），视为检测失败
-                return detected >= 1024 * 1024 ? detected : null;
-            }
-        }
-        return null;
-    } catch (error) {
-        console.log(`检测 flash 容量出错：${error.message}`);
-        return null;
-    }
-}
-
-/**
  * 填充设备信息面板。
  * @return {void}
  */
@@ -2445,8 +2364,8 @@ function updateDeviceInfo() {
 
     const info = picoboot.getUsbDeviceInfo();
     const target = picoboot.getTarget();
-    const flashEnd = flashEndForTarget(target);
     const start = target.flashStart();
+    const rangeEnd = start + FLASH_SIZE;
 
     deviceTarget.textContent = target.toString();
     deviceVidPid.textContent = `${info.vendorId.toString(16).padStart(4, '0')}:${info.productId.toString(16).padStart(4, '0')}`;
@@ -2455,8 +2374,7 @@ function updateDeviceInfo() {
     deviceSerial.textContent = info.serialNumber || '-';
     deviceUsbVersion.textContent = `${info.usbVersionMajor}.${info.usbVersionMinor}.${info.usbVersionSubminor}`;
     deviceDeviceVersion.textContent = `${info.deviceVersionMajor}.${info.deviceVersionMinor}.${info.deviceVersionSubminor}`;
-    const rangeEnd = flashSize != null ? start + flashSize : flashEnd;
-    deviceFlashRange.textContent = `0x${start.toString(16)} - ${rangeEnd != null ? `0x${rangeEnd.toString(16)}` : '--'}${flashSize != null ? `（实测 ${formatBytes(flashSize)}）` : ''}`;
+    deviceFlashRange.textContent = `0x${start.toString(16)} - 0x${rangeEnd.toString(16)}（${formatBytes(FLASH_SIZE)}）`;
     deviceSector.textContent = formatBytes(target.flashSectorSize());
     devicePage.textContent = formatBytes(target.flashPageSize());
 
@@ -2672,21 +2590,10 @@ async function connect() {
 
         logActivity('连接成功', 'success');
         updateStatus('已连接');
-
-        // 连接成功后检测 flash 实际容量（失败不影响连接）
-        flashSize = null;
-        flashSize = await detectFlashSize();
-        if (flashSize != null) {
-            logActivity(`检测到 flash 实际容量：${formatBytes(flashSize)}`, 'success');
-        } else {
-            logActivity('无法检测 flash 实际容量（空白 flash 或读取失败），按地址窗口上限处理', 'warning');
-        }
-        updateDeviceInfo();
     } catch (e) {
         logActivity(`错误：${e.message}`, 'error');
         connection = null;
         picoboot = null;
-        flashSize = null;
         updateStatus('连接错误');
     }
 }
@@ -2702,8 +2609,6 @@ async function disconnect() {
         console.log('没有已连接的设备');
         throw new Error('没有已连接的设备');
     }
-
-    flashSize = null;
 
     try {
         await withDefaultTimeout(
@@ -3055,23 +2960,9 @@ async function eraseFlash() {
         return;
     }
 
-    // 计算擦除范围：整片 flash 地址窗口
-    const target = picoboot.getTarget();
-    const flashEnd = flashEndForTarget(target);
-    if (flashEnd == null) {
-        logActivity(`未知目标（${target.toString()}），无法确定 flash 范围，已取消`, 'error');
-        updateStatus('清空已取消');
-        busy = false;
-        updateUi();
-        return;
-    }
-
+    // 擦除范围：整片 flash（固定按板上芯片实际容量 FLASH_SIZE）
     const start = FLASH_START;
-    // 优先使用连接时检测到的实际容量；检测失败（如空白 flash）才退回地址窗口上限
-    const size = flashSize != null ? flashSize : flashEnd - start;
-    if (flashSize == null) {
-        logActivity('未能检测 flash 实际容量，将按地址窗口上限擦除', 'warning');
-    }
+    const size = FLASH_SIZE;
 
     updateStatus('正在清空flash…');
 
@@ -3105,7 +2996,6 @@ async function eraseFlash() {
         } finally {
             connection = null;
             picoboot = null;
-            flashSize = null;
         }
     } catch (error) {
         clearProgressInterval(progressInterval, 100, true);

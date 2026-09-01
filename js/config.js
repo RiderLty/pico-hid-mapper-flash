@@ -33,5 +33,8 @@ export const FLASH_SPEED = 80 * 1024;
 /** @type {number} 重启延迟（毫秒） */
 export const DEFAULT_REBOOT_DELAY = 100;
 
+/** @type {number} 板上 flash 芯片实际容量（字节），用于容量显示与整片擦除 */
+export const FLASH_SIZE = 2 * 1024 * 1024;
+
 /** @type {number} 短 SHA-256 校验值取前几位十六进制字符 */
 export const SHA256_SHORT_LENGTH = 8;
