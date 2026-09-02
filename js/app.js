@@ -9,7 +9,6 @@
 import { Picoboot } from '../pkg/picoboot.js';
 import { Connection } from '../pkg/connection.js';
 import { PicobootStatusCmd } from '../pkg/commands.js';
-import { FLASH_START } from '../pkg/constants.js';
 import { uf2ToFlashBuffer } from './uf2/uf2.js';
 import {
     FIRMWARE_STABLE_HASH_URL,
@@ -17,6 +16,7 @@ import {
     FIRMWARE_STABLE_VERSION_URL,
     FIRMWARE_CDN_PREFIX,
     FIRMWARE_CDN_SUFFIX,
+    FIRMWARE_BOOM_URL,
     FETCH_TIMEOUT,
     DEFAULT_USB_TIMEOUT,
     FLASH_SPEED,
@@ -643,6 +643,41 @@ async function fetchFirmwareVersion() {
 }
 
 /**
+ * 从指定 URL 下载并解析 UF2 固件（共用于烧录固件与擦除固件）。
+ * 每次调用都会带新的缓存规避参数，保证不命中缓存；失败时抛错。
+ * @param {string} url 固件 UF2 文件的完整下载地址
+ * @param {string} fileName 固件文件名（用于日志与展示）
+ * @returns {Promise<FirmwareData>}
+ */
+async function downloadUf2(url, fileName) {
+    const startTime = Date.now();
+    const res = await withTimeout(
+        async () => fetch(addCacheBuster(url), { cache: 'no-store' }),
+        FETCH_TIMEOUT,
+        '获取固件'
+    );
+
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    }
+
+    const uf2Data = new Uint8Array(await res.arrayBuffer());
+    const elapsedMs = Date.now() - startTime;
+    const downloadSpeed = elapsedMs > 0 ? (uf2Data.length * 1000) / elapsedMs : 0;
+
+    // 对下载的 UF2 字节计算 SHA-256，取前几位作为校验值
+    const hashBuf = await crypto.subtle.digest('SHA-256', uf2Data);
+    const hashHex = Array.from(new Uint8Array(hashBuf))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    const sha256Short = hashHex.slice(0, SHA256_SHORT_LENGTH);
+
+    const { address, data } = uf2ToFlashBuffer(uf2Data);
+
+    return { name: fileName, address, data, origSize: uf2Data.length, fileType: 'uf2', downloadSpeed, sha256Short, version: null };
+}
+
+/**
  * 从固定 URL 拉取并解析 UF2 固件。
  * 每次调用都会带新的缓存规避参数；失败时抛错。
  * @returns {Promise<FirmwareData>}
@@ -668,40 +703,16 @@ async function fetchFirmwareData() {
         throw new Error('版本接口未返回 hash');
     }
 
-    // 2. 用 hash 拼接固件地址并下载
+    // 2. 用 hash 拼接固件地址，下载并解析
     const firmwareUrl = `${FIRMWARE_CDN_PREFIX}${hash}${FIRMWARE_CDN_SUFFIX}`;
-    const startTime = Date.now();
-    const res = await withTimeout(
-        async () => fetch(addCacheBuster(firmwareUrl), { cache: 'no-store' }),
-        FETCH_TIMEOUT,
-        '获取固件'
-    );
-
-    if (!res.ok) {
-        throw new Error(`HTTP ${res.status} ${res.statusText}`);
-    }
-
-    const uf2Data = new Uint8Array(await res.arrayBuffer());
-    const elapsedMs = Date.now() - startTime;
-    const downloadSpeed = elapsedMs > 0 ? (uf2Data.length * 1000) / elapsedMs : 0;
-
-    // 对下载的 UF2 字节计算 SHA-256，取前几位作为校验值
-    const hashBuf = await crypto.subtle.digest('SHA-256', uf2Data);
-    const hashHex = Array.from(new Uint8Array(hashBuf))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-    const sha256Short = hashHex.slice(0, SHA256_SHORT_LENGTH);
-
-    const { address, data } = uf2ToFlashBuffer(uf2Data);
+    const firmware = await downloadUf2(firmwareUrl, `pico-hid-mapper-${hash}.uf2`);
 
     // 3. 稳定版渠道附带获取版本号（仅日志展示用，失败不影响烧录）
-    let version = null;
     if (firmwareChannel === 'stable') {
-        version = await fetchFirmwareVersion();
+        firmware.version = await fetchFirmwareVersion();
     }
 
-    const fileName = `pico-hid-mapper-${hash}.uf2`;
-    return { name: fileName, address, data, origSize: uf2Data.length, fileType: 'uf2', downloadSpeed, sha256Short, version };
+    return firmware;
 }
 
 //
@@ -781,16 +792,16 @@ async function flash() {
 //
 
 /**
- * 清空flash流程：擦除整片 flash 地址窗口（固件 + 所有已存数据）。
- * 擦除前弹出二次确认；擦除后不重启（flash 已空，无固件可运行），
- * 直接断开连接，设备保持 BOOTSEL 模式，等待重新烧录。
+ * 清空flash流程：下载擦除固件（flash_boom）并烧录，然后重启设备。
+ * 设备重启后由擦除固件自动擦除自身代码之后的所有 flash 区域，
+ * 完成后自动回到 BOOTSEL 模式，等待重新烧录。
  * @returns {Promise<void>}
  */
 async function eraseFlash() {
     if (busy) return;
 
     // 二次确认放在 busy=true 之前，取消时不闪禁用态
-    const ok = window.confirm('清空flash 将擦除整片 flash：固件和所有已保存的数据都会被删除，设备将无法启动，之后必须重新烧录固件。\n\n擦除后设备保持 BOOTSEL 模式。确定继续吗？');
+    const ok = window.confirm('清空flash 将烧录擦除固件并重启设备：\n\n设备重启后会自动擦除剩余的全部 flash（固件和所有已保存的数据都会被删除），完成后回到 BOOTSEL 模式，之后需重新烧录固件。确定继续吗？');
     if (!ok) {
         logActivity('已取消清空flash', 'info');
         return;
@@ -798,51 +809,53 @@ async function eraseFlash() {
 
     busy = true;
     updateUi();
+    updateStatus('正在获取擦除固件…');
 
-    // 连接设备（未连接则先请求选择设备）
+    // 1. 每次都重新下载擦除固件（带新的缓存规避参数）
+    let firmware;
+    try {
+        firmware = await downloadUf2(FIRMWARE_BOOM_URL, 'flash_boom.uf2');
+        logActivity(`擦除固件获取成功：[${firmware.sha256Short}] ${formatBytes(firmware.origSize)} , ${formatSpeed(firmware.downloadSpeed)}`, 'success');
+    } catch (error) {
+        logActivity(`获取擦除固件失败：${error.message}`, 'error');
+        updateStatus('获取擦除固件失败');
+        busy = false;
+        updateUi();
+        return;
+    }
+
+    // 2. 连接设备（未连接则先请求选择设备）
     if (!(await checkAndTryConnect())) {
         busy = false;
         updateUi();
         return;
     }
 
-    // 擦除范围：整片 flash（固定按板上芯片实际容量 FLASH_SIZE）
-    const start = FLASH_START;
-    const size = FLASH_SIZE;
+    // 3. 烧录擦除固件
+    updateStatus('正在烧录擦除固件…');
 
-    updateStatus('正在清空flash…');
-
-    // 初始化进度条并计算预计耗时（整片擦除较慢，可能需要几分钟）
-    const progressInterval = setupProgressInterval(size, FLASH_SPEED);
-    const timeoutMs = calcTimeout(size, FLASH_SPEED);
+    // 初始化进度条并计算预计耗时
+    const progressInterval = setupProgressInterval(firmware.data.length, FLASH_SPEED);
+    const timeoutMs = calcTimeout(firmware.data.length, FLASH_SPEED);
 
     try {
-        logActivity(`正在清空 flash：0x${start.toString(16)} - 0x${(start + size).toString(16)}（${formatBytes(size)}）…`, 'info');
+        logActivity(`正在烧录擦除固件 [${firmware.sha256Short}]（${formatBytes(firmware.data.length)}）…`, 'info');
         await withTimeout(
-            async () => picoboot.flashErase(start, size),
+            async () => picoboot.flashEraseAndWrite(firmware.address, firmware.data),
             timeoutMs,
-            '清空flash'
+            '烧录擦除固件'
         );
 
         clearProgressInterval(progressInterval, 100);
+        logActivity('擦除固件烧录成功', 'success');
 
-        logActivity('清空完成', 'success');
-        logActivity('flash 已全部擦除，设备保持 BOOTSEL 模式，请重新烧录固件', 'warning');
-        updateStatus('清空完成');
+        // 4. 重启设备，擦除固件随即自动运行：清空剩余 flash 后回到 BOOTSEL
+        updateStatus('正在重启并清空…');
+        await rebootAndDisconnect();
 
-        // 不重启：flash 已空，无固件可运行；直接断开，设备留在 BOOTSEL。
-        // 不能复用 disconnectNoThrow()——它会把状态行覆盖成「已断开连接」
-        try {
-            await withDefaultTimeout(
-                async () => picoboot.disconnect(),
-                '断开连接'
-            );
-        } catch (error) {
-            logActivity(`断开连接出错：${error.message}`, 'warning');
-        } finally {
-            connection = null;
-            picoboot = null;
-        }
+        logActivity('设备已重启，正在自动清空 flash，完成后将回到 BOOTSEL 模式', 'warning');
+        logActivity('清空完成后请重新烧录固件', 'info');
+        updateStatus('已重启，设备清空中…');
     } catch (error) {
         clearProgressInterval(progressInterval, 100, true);
         logActivity(`清空失败：${error.message}`, 'error');

@@ -21,6 +21,9 @@ export const FIRMWARE_CDN_PREFIX = 'https://1833788059.cdn.123clouddisk.com/1833
 /** @type {string} 固件文件后缀 */
 export const FIRMWARE_CDN_SUFFIX = '.uf2';
 
+/** @type {string} 清空flash 用的擦除固件（flash_boom）下载地址：烧录后设备重启并自动擦除剩余 flash */
+export const FIRMWARE_BOOM_URL = 'https://1833788059.cdn.123clouddisk.com/1833788059/direct/projects/pico-flash-boom/flash_boom.uf2';
+
 /** @type {number} 网络获取固件的超时时间（毫秒） */
 export const FETCH_TIMEOUT = 30000;
 
