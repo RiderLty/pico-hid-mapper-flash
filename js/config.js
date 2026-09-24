@@ -41,3 +41,12 @@ export const FLASH_SIZE = 2 * 1024 * 1024;
 
 /** @type {number} 短 SHA-256 校验值取前几位十六进制字符 */
 export const SHA256_SHORT_LENGTH = 8;
+
+/** @type {string} 使用统计上报地址（statistics.rd5isto.org 写入端点） */
+export const STATS_ENDPOINT = 'https://statistics.rd5isto.org/a/4a4c4cf9-7e2a-4abb-a202-53ab864af193';
+
+/** @type {boolean} 是否开启使用统计上报 */
+export const STATS_ENABLED = true;
+
+/** @type {string} 统计上报中的站点标识 */
+export const STATS_SITE = 'picoflash.org';

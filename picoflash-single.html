@@ -2174,6 +2174,15 @@ const FLASH_SIZE = 2 * 1024 * 1024;
 /** @type {number} 短 SHA-256 校验值取前几位十六进制字符 */
 const SHA256_SHORT_LENGTH = 8;
 
+/** @type {string} 使用统计上报地址（statistics.rd5isto.org 写入端点） */
+const STATS_ENDPOINT = 'https://statistics.rd5isto.org/a/4a4c4cf9-7e2a-4abb-a202-53ab864af193';
+
+/** @type {boolean} 是否开启使用统计上报 */
+const STATS_ENABLED = true;
+
+/** @type {string} 统计上报中的站点标识 */
+const STATS_SITE = 'picoflash.org';
+
 // Copyright (C) 2025 Piers Finlayson <piers@piers.rocks>
 //
 // MIT License
@@ -2195,7 +2204,25 @@ const SHA256_SHORT_LENGTH = 8;
  * @property {string} fileType
  * @property {number} downloadSpeed 下载网速（字节/秒）
  * @property {string} sha256Short 下载固件的短 SHA-256 校验值（小写十六进制）
+ * @property {string} hash 下载固件所用的版本 hash（CDN 文件名中的那段）
  * @property {string|null} version 稳定版固件版本号（仅稳定版渠道；最新版为 null）
+ */
+
+/**
+ * @typedef {Object} UsageReport
+ * @property {string} site 站点标识
+ * @property {'stable'|'latest'} channel 固件版本渠道
+ * @property {string} firmwareVersion 稳定版版本号；最新版为 ''
+ * @property {string} firmwareHash 最新版固件 hash；稳定版为 ''
+ * @property {string|null} target 目标芯片
+ * @property {string|null} vidPid
+ * @property {string|null} manufacturer
+ * @property {string|null} product
+ * @property {string|null} serial 设备序列号
+ * @property {string|null} usbVersion
+ * @property {string|null} deviceVersion
+ * @property {string|null} language 浏览器语言
+ * @property {number} ts 上报时间戳（毫秒）
  */
 
 //
@@ -2804,9 +2831,10 @@ async function fetchFirmwareVersion() {
  * 每次调用都会带新的缓存规避参数，保证不命中缓存；失败时抛错。
  * @param {string} url 固件 UF2 文件的完整下载地址
  * @param {string} fileName 固件文件名（用于日志与展示）
+ * @param {string} hash 固件版本 hash（用于统计上报）
  * @returns {Promise<FirmwareData>}
  */
-async function downloadUf2(url, fileName) {
+async function downloadUf2(url, fileName, hash = '') {
     const startTime = Date.now();
     const res = await withTimeout(
         async () => fetch(addCacheBuster(url), { cache: 'no-store' }),
@@ -2831,7 +2859,7 @@ async function downloadUf2(url, fileName) {
 
     const { address, data } = uf2ToFlashBuffer(uf2Data);
 
-    return { name: fileName, address, data, origSize: uf2Data.length, fileType: 'uf2', downloadSpeed, sha256Short, version: null };
+    return { name: fileName, address, data, origSize: uf2Data.length, fileType: 'uf2', downloadSpeed, sha256Short, hash, version: null };
 }
 
 /**
@@ -2862,7 +2890,7 @@ async function fetchFirmwareData() {
 
     // 2. 用 hash 拼接固件地址，下载并解析
     const firmwareUrl = `${FIRMWARE_CDN_PREFIX}${hash}${FIRMWARE_CDN_SUFFIX}`;
-    const firmware = await downloadUf2(firmwareUrl, `pico-hid-mapper-${hash}.uf2`);
+    const firmware = await downloadUf2(firmwareUrl, `pico-hid-mapper-${hash}.uf2`, hash);
 
     // 3. 稳定版渠道附带获取版本号（仅日志展示用，失败不影响烧录）
     if (firmwareChannel === 'stable') {
@@ -2870,6 +2898,111 @@ async function fetchFirmwareData() {
     }
 
     return firmware;
+}
+
+//
+// 使用统计上报
+//
+
+/**
+ * 组装一次烧录上报的数据。
+ *
+ * 上报的固件标识只取"用户当前选中的渠道"对应的那一个：
+ * - 稳定版：版本号（version），例如 3.3.1
+ * - 最新版：固件 hash
+ *
+ * 设备信息取自已选择的 USB 设备（可能为 null —— 用户点了烧录但还没选设备）。
+ *
+ * @param {FirmwareData|null} firmware 已获取的固件信息，未获取到时为 null
+ * @returns {UsageReport}
+ */
+function buildUsageReport(firmware) {
+    /** @type {UsageReport} */
+    const report = {
+        site: STATS_SITE,
+        channel: firmwareChannel,
+        firmwareVersion: (firmware && firmware.version) || '',
+        firmwareHash: (firmware && firmware.hash) || '',
+        target: null,
+        vidPid: null,
+        manufacturer: null,
+        product: null,
+        serial: null,
+        usbVersion: null,
+        deviceVersion: null,
+        language: navigator.language || '',
+        ts: Date.now(),
+    };
+
+    // 没有已选择的设备时，设备相关字段保持 null（WebUSB 不允许在用户选择前读取设备信息）
+    if (!picoboot) {
+        return report;
+    }
+
+    try {
+        const info = picoboot.getUsbDeviceInfo();
+        const target = picoboot.getTarget();
+
+        report.target = target.toString();
+        report.vidPid = `${info.vendorId.toString(16).padStart(4, '0')}:${info.productId.toString(16).padStart(4, '0')}`;
+        report.manufacturer = info.manufacturerName || null;
+        report.product = info.productName || null;
+        report.serial = info.serialNumber || null;
+        report.usbVersion = `${info.usbVersionMajor}.${info.usbVersionMinor}.${info.usbVersionSubminor}`;
+        report.deviceVersion = `${info.deviceVersionMajor}.${info.deviceVersionMinor}.${info.deviceVersionSubminor}`;
+    } catch (error) {
+        console.log(`读取设备信息用于上报时出错：${error.message}`);
+    }
+
+    return report;
+}
+
+/**
+ * 上报一次使用统计。
+ *
+ * 统计属于"尽力而为"：任何失败都只写控制台，绝不抛错、绝不阻塞或打断烧录流程。
+ * 优先用 sendBeacon（浏览器后台发送，不受页面关闭影响），失败再退回 fetch。
+ *
+ * @param {FirmwareData|null} firmware 已获取的固件信息，未获取到时为 null
+ * @return {void}
+ */
+function reportFlashStart(firmware) {
+    if (!STATS_ENABLED) {
+        return;
+    }
+
+    const report = buildUsageReport(firmware);
+    console.log('使用统计上报：', report);
+
+    let body;
+    try {
+        body = JSON.stringify(report);
+    } catch (error) {
+        console.log(`统计上报序列化失败：${error.message}`);
+        return;
+    }
+
+    // sendBeacon 不需要等待响应，也不会因为用户切走页面而中断
+    try {
+        const blob = new Blob([body], { type: 'application/json' });
+        if (navigator.sendBeacon && navigator.sendBeacon(STATS_ENDPOINT, blob)) {
+            console.log('使用统计已通过 sendBeacon 发送');
+            return;
+        }
+    } catch (error) {
+        console.log(`sendBeacon 上报失败，改用 fetch：${error.message}`);
+    }
+
+    // 兜底：keepalive 让请求在页面卸载后仍能完成
+    fetch(STATS_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        keepalive: true,
+        mode: 'cors',
+    })
+        .then((res) => console.log(`使用统计已通过 fetch 发送：HTTP ${res.status}`))
+        .catch((error) => console.log(`使用统计上报失败（已忽略）：${error.message}`));
 }
 
 //
@@ -2900,14 +3033,17 @@ async function flash() {
         return;
     }
 
-    // 2. 连接设备（未连接则先请求选择设备）
+    // 2. 上报本次烧录（此时固件信息已可用；上报失败不影响烧录）
+    reportFlashStart(firmware);
+
+    // 3. 连接设备（未连接则先请求选择设备）
     if (!(await checkAndTryConnect())) {
         busy = false;
         updateUi();
         return;
     }
 
-    // 3. 烧录
+    // 4. 烧录
     updateStatus('正在烧录…');
 
     // 初始化进度条并计算预计耗时
