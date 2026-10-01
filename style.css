@@ -322,3 +322,24 @@ body {
 .hidden {
     display: none !important;
 }
+
+/* 目标平台切换（仅稳定版渠道可见；复用 version-option 视觉语言） */
+.version-option[data-platform='android']::before {
+    background-color: var(--color-success);
+}
+
+.version-option[data-platform='ios']::before {
+    background-color: var(--color-latest);
+}
+
+.version-option[data-platform='android'].is-active {
+    background-color: var(--color-success);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.35);
+}
+
+.version-option[data-platform='ios'].is-active {
+    background-color: var(--color-latest);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
+}

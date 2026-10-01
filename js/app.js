@@ -12,6 +12,7 @@ import { PicobootStatusCmd } from '../pkg/commands.js';
 import { uf2ToFlashBuffer } from './uf2/uf2.js';
 import {
     FIRMWARE_STABLE_HASH_URL,
+    FIRMWARE_STABLE_HASH_IOS_URL,
     FIRMWARE_LATEST_HASH_URL,
     FIRMWARE_STABLE_VERSION_URL,
     FIRMWARE_CDN_PREFIX,
@@ -77,9 +78,12 @@ let busy = false;
 
 /** @type {'stable'|'latest'} 当前固件版本渠道 */
 let firmwareChannel = 'stable';
+/** @type {'android'|'ios'} 目标平台（仅稳定版渠道可选；最新版是调试构建，固定安卓默认） */
+let firmwarePlatform = 'android';
 
 /** localStorage 键：记住用户上次选择的固件版本 */
 const FIRMWARE_CHANNEL_STORAGE_KEY = 'picoflash-firmware-channel';
+const FIRMWARE_PLATFORM_STORAGE_KEY = 'picoflash-firmware-platform';
 
 // Progress bar
 /** @type {number} */
@@ -129,6 +133,9 @@ const activityContent = document.getElementById('activityContent');
 // 固件版本切换
 const versionStableBtn = /** @type {HTMLButtonElement} */ (document.getElementById('versionStableBtn'));
 const versionLatestBtn = /** @type {HTMLButtonElement} */ (document.getElementById('versionLatestBtn'));
+const platformSwitch = document.getElementById('platformSwitch');
+const platformAndroidBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformAndroidBtn'));
+const platformIosBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformIosBtn'));
 
 //
 // 日志与格式化
@@ -142,8 +149,9 @@ function startup() {
     // 记录已加载
     logActivity('picoflash 已加载', 'info');
 
-    // 恢复上次选择的固件版本（默认稳定版）
+    // 恢复上次选择的固件版本（默认稳定版）与目标平台（默认安卓）
     firmwareChannel = loadFirmwareChannel();
+    firmwarePlatform = loadFirmwarePlatform();
     updateVersionUi();
 
     // 更新界面
@@ -575,6 +583,54 @@ async function rebootAndDisconnect() {
 }
 
 //
+// 目标平台切换（仅稳定版渠道生效）
+//
+
+/**
+ * 从 localStorage 读取上次选择的目标平台，默认安卓。
+ * @returns {'android'|'ios'}
+ */
+function loadFirmwarePlatform() {
+    try {
+        const saved = localStorage.getItem(FIRMWARE_PLATFORM_STORAGE_KEY);
+        if (saved === 'android' || saved === 'ios') {
+            return saved;
+        }
+    } catch {
+        // localStorage 不可用（隐私模式等），回退默认值
+    }
+    return 'android';
+}
+
+/**
+ * 设置目标平台，更新 UI 并持久化。
+ * @param {'android'|'ios'} platform
+ * @return {void}
+ */
+function setFirmwarePlatform(platform) {
+    if (platform === firmwarePlatform) return;
+
+    firmwarePlatform = platform;
+    try {
+        localStorage.setItem(FIRMWARE_PLATFORM_STORAGE_KEY, platform);
+    } catch {
+        // 忽略持久化失败
+    }
+    updatePlatformUi();
+    logActivity(`目标平台已切换为：${platform === 'ios' ? 'iOS' : '安卓'}`, 'info');
+}
+
+/** 更新平台切换按钮的激活态与可见性（最新版渠道隐藏——调试构建不区分平台）。 */
+function updatePlatformUi() {
+    const ios = firmwarePlatform === 'ios';
+    if (platformSwitch) platformSwitch.hidden = firmwareChannel !== 'stable';
+    platformAndroidBtn.classList.toggle('is-active', !ios);
+    platformIosBtn.classList.toggle('is-active', ios);
+    platformAndroidBtn.setAttribute('aria-pressed', String(!ios));
+    platformIosBtn.setAttribute('aria-pressed', String(ios));
+}
+
+//
 // 固件版本切换
 //
 
@@ -623,6 +679,7 @@ function updateVersionUi() {
     versionLatestBtn.classList.toggle('is-active', !stable);
     versionStableBtn.setAttribute('aria-pressed', String(stable));
     versionLatestBtn.setAttribute('aria-pressed', String(!stable));
+    updatePlatformUi();
 }
 
 //
@@ -705,10 +762,15 @@ async function downloadUf2(url, fileName, hash = '') {
  * @returns {Promise<FirmwareData>}
  */
 async function fetchFirmwareData() {
-    logActivity(`获取固件中（${firmwareChannel === 'stable' ? '稳定版' : '最新版'}）…`, 'info');
+    const stable = firmwareChannel === 'stable';
+    logActivity(`获取固件中（${stable ? `稳定版·${firmwarePlatform === 'ios' ? 'iOS' : '安卓'}` : '最新版'}）…`, 'info');
 
-    // 1. 获取所选渠道（稳定版/最新版）的版本 hash
-    const hashUrl = addCacheBuster(firmwareChannel === 'stable' ? FIRMWARE_STABLE_HASH_URL : FIRMWARE_LATEST_HASH_URL);
+    // 1. 获取所选渠道（稳定版/最新版）的版本 hash；稳定版再按目标平台选 KV key
+    //    （安卓稳定版沿用原 key，iOS 稳定版用 -ios 后缀 key；最新版是调试构建不区分）
+    const hashUrl = addCacheBuster(
+        stable
+            ? (firmwarePlatform === 'ios' ? FIRMWARE_STABLE_HASH_IOS_URL : FIRMWARE_STABLE_HASH_URL)
+            : FIRMWARE_LATEST_HASH_URL);
     const hashRes = await withTimeout(
         async () => fetch(hashUrl, { cache: 'no-store' }),
         FETCH_TIMEOUT,
@@ -1137,6 +1199,14 @@ versionStableBtn.addEventListener('click', () => {
 
 versionLatestBtn.addEventListener('click', () => {
     setFirmwareChannel('latest');
+});
+
+platformAndroidBtn.addEventListener('click', () => {
+    setFirmwarePlatform('android');
+});
+
+platformIosBtn.addEventListener('click', () => {
+    setFirmwarePlatform('ios');
 });
 
 //
