@@ -138,7 +138,6 @@ const platformAndroidBtn = /** @type {HTMLButtonElement} */ (document.getElement
 const platformIosBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformIosBtn'));
 const downloadBtn = /** @type {HTMLButtonElement} */ (document.getElementById('downloadBtn'));
 const webusbModal = document.getElementById('webusbModal');
-const modalDownloadBtn = /** @type {HTMLButtonElement} */ (document.getElementById('modalDownloadBtn'));
 const modalCloseBtn = /** @type {HTMLButtonElement} */ (document.getElementById('modalCloseBtn'));
 
 //
@@ -158,11 +157,11 @@ function startup() {
     firmwarePlatform = loadFirmwarePlatform();
     updateVersionUi();
 
-    // WebUSB 不可用：不再只报错——弹窗引导"下载 UF2 + 系统拖拽烧录"路径，
-    // 在线烧录相关按钮禁用（点击也连不上设备）
+    // WebUSB 不可用：弹窗告知 + 「烧录固件」按钮替换为「下载固件」——
+    // 不支持的环境只允许下载，不允许在线烧录（擦除 / 连接同样禁用）
     if (!('usb' in navigator)) {
         showWebusbModal();
-        flashBtn.disabled = true;
+        flashBtn.hidden = true;
         eraseBtn.disabled = true;
         connectBtn.disabled = true;
         updateStatus('当前浏览器不支持 WebUSB，可下载固件后手动烧录');
@@ -773,7 +772,6 @@ async function downloadFirmwareFile() {
         setTimeout(() => URL.revokeObjectURL(url), 10000);
         updateStatus('固件已下载');
         logActivity(`固件已下载：pico-hid-mapper-${hash}.uf2（${formatBytes(blob.size)}）`, 'info');
-        hideWebusbModal();
     } catch (error) {
         updateStatus('下载失败');
         logActivity(`错误：${error.message}`, 'error');
@@ -1299,10 +1297,6 @@ platformIosBtn.addEventListener('click', () => {
 });
 
 downloadBtn.addEventListener('click', () => {
-    downloadFirmwareFile();
-});
-
-modalDownloadBtn.addEventListener('click', () => {
     downloadFirmwareFile();
 });
 
