@@ -136,6 +136,10 @@ const versionLatestBtn = /** @type {HTMLButtonElement} */ (document.getElementBy
 const platformSwitch = document.getElementById('platformSwitch');
 const platformAndroidBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformAndroidBtn'));
 const platformIosBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformIosBtn'));
+const downloadBtn = /** @type {HTMLButtonElement} */ (document.getElementById('downloadBtn'));
+const webusbModal = document.getElementById('webusbModal');
+const modalDownloadBtn = /** @type {HTMLButtonElement} */ (document.getElementById('modalDownloadBtn'));
+const modalCloseBtn = /** @type {HTMLButtonElement} */ (document.getElementById('modalCloseBtn'));
 
 //
 // 日志与格式化
@@ -153,6 +157,17 @@ function startup() {
     firmwareChannel = loadFirmwareChannel();
     firmwarePlatform = loadFirmwarePlatform();
     updateVersionUi();
+
+    // WebUSB 不可用：不再只报错——弹窗引导"下载 UF2 + 系统拖拽烧录"路径，
+    // 在线烧录相关按钮禁用（点击也连不上设备）
+    if (!('usb' in navigator)) {
+        showWebusbModal();
+        flashBtn.disabled = true;
+        eraseBtn.disabled = true;
+        connectBtn.disabled = true;
+        updateStatus('当前浏览器不支持 WebUSB，可下载固件后手动烧录');
+        logActivity('当前浏览器不支持 WebUSB：已切换为下载固件 + 手动烧录模式', 'info');
+    }
 
     // 更新界面
     updateUi();
@@ -697,6 +712,85 @@ function addCacheBuster(url) {
 }
 
 /**
+ * 当前渠道的版本 hash 接口地址：稳定版按目标平台分 KV key
+ * （安卓稳定版沿用原 key，iOS 稳定版用 -ios 后缀 key；最新版是调试构建不区分）。
+ * @returns {string}
+ */
+function getFirmwareHashUrl() {
+    if (firmwareChannel === 'stable') {
+        return firmwarePlatform === 'ios' ? FIRMWARE_STABLE_HASH_IOS_URL : FIRMWARE_STABLE_HASH_URL;
+    }
+    return FIRMWARE_LATEST_HASH_URL;
+}
+
+/** 渠道 + 平台的展示文案（日志用）。 */
+function channelLabel() {
+    if (firmwareChannel !== 'stable') return '最新版';
+    return `稳定版·${firmwarePlatform === 'ios' ? 'iOS' : '安卓'}`;
+}
+
+/**
+ * 直接把当前所选渠道 / 平台的 UF2 固件下载为文件（不经 WebUSB）。
+ * 供不支持 WebUSB 的浏览器走"下载 + 系统拖拽烧录"路径，也可随时手动取固件。
+ * @returns {Promise<void>}
+ */
+async function downloadFirmwareFile() {
+    try {
+        updateStatus('获取固件下载地址…');
+        const hashUrl = addCacheBuster(getFirmwareHashUrl());
+        const hashRes = await withTimeout(
+            async () => fetch(hashUrl, { cache: 'no-store' }),
+            FETCH_TIMEOUT,
+            '获取版本'
+        );
+        if (!hashRes.ok) {
+            throw new Error(`获取版本失败：HTTP ${hashRes.status}`);
+        }
+        const hashJson = await hashRes.json();
+        const hash = hashJson.value;
+        if (!hash) {
+            throw new Error('版本接口未返回 hash');
+        }
+
+        updateStatus('下载固件中…');
+        logActivity(`下载固件（${channelLabel()}）…`, 'info');
+        const res = await withTimeout(
+            async () => fetch(addCacheBuster(`${FIRMWARE_CDN_PREFIX}${hash}${FIRMWARE_CDN_SUFFIX}`), { cache: 'no-store' }),
+            FETCH_TIMEOUT,
+            '下载固件'
+        );
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `pico-hid-mapper-${hash}.uf2`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        updateStatus('固件已下载');
+        logActivity(`固件已下载：pico-hid-mapper-${hash}.uf2（${formatBytes(blob.size)}）`, 'info');
+        hideWebusbModal();
+    } catch (error) {
+        updateStatus('下载失败');
+        logActivity(`错误：${error.message}`, 'error');
+    }
+}
+
+/** 显示 WebUSB 不可用引导弹窗。 */
+function showWebusbModal() {
+    if (webusbModal) webusbModal.hidden = false;
+}
+
+/** 关闭引导弹窗。 */
+function hideWebusbModal() {
+    if (webusbModal) webusbModal.hidden = true;
+}
+
+/**
  * 获取稳定版固件版本号（仅稳定版渠道有版本标签）。
  * 失败时返回 null，不抛错——版本号只用于日志展示，不影响烧录。
  * @returns {Promise<string|null>}
@@ -762,15 +856,10 @@ async function downloadUf2(url, fileName, hash = '') {
  * @returns {Promise<FirmwareData>}
  */
 async function fetchFirmwareData() {
-    const stable = firmwareChannel === 'stable';
-    logActivity(`获取固件中（${stable ? `稳定版·${firmwarePlatform === 'ios' ? 'iOS' : '安卓'}` : '最新版'}）…`, 'info');
+    logActivity(`获取固件中（${channelLabel()}）…`, 'info');
 
-    // 1. 获取所选渠道（稳定版/最新版）的版本 hash；稳定版再按目标平台选 KV key
-    //    （安卓稳定版沿用原 key，iOS 稳定版用 -ios 后缀 key；最新版是调试构建不区分）
-    const hashUrl = addCacheBuster(
-        stable
-            ? (firmwarePlatform === 'ios' ? FIRMWARE_STABLE_HASH_IOS_URL : FIRMWARE_STABLE_HASH_URL)
-            : FIRMWARE_LATEST_HASH_URL);
+    // 1. 获取所选渠道（稳定版/最新版）的版本 hash
+    const hashUrl = addCacheBuster(getFirmwareHashUrl());
     const hashRes = await withTimeout(
         async () => fetch(hashUrl, { cache: 'no-store' }),
         FETCH_TIMEOUT,
@@ -1207,6 +1296,23 @@ platformAndroidBtn.addEventListener('click', () => {
 
 platformIosBtn.addEventListener('click', () => {
     setFirmwarePlatform('ios');
+});
+
+downloadBtn.addEventListener('click', () => {
+    downloadFirmwareFile();
+});
+
+modalDownloadBtn.addEventListener('click', () => {
+    downloadFirmwareFile();
+});
+
+modalCloseBtn.addEventListener('click', () => {
+    hideWebusbModal();
+});
+
+// 点遮罩空白处也可关闭（点卡片本身不关）
+webusbModal.addEventListener('click', (e) => {
+    if (e.target === webusbModal) hideWebusbModal();
 });
 
 //
