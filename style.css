@@ -154,6 +154,109 @@ body {
     margin: 0;
 }
 
+/* 版本 + 平台切换的容器 */
+.switch-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+/* hidden 属性必须显式声明，否则会被 .version-switch 的 display 覆盖 */
+.version-switch[hidden] {
+    display: none;
+}
+
+/* 当前固件说明 */
+.firmware-hint {
+    margin: 0 0 14px;
+    padding: 9px 14px;
+    background-color: var(--color-bg);
+    border: 1px dashed var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+/* 操作按钮区：主按钮 + 次要按钮组 */
+.action-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-flash {
+    flex: 1 1 200px;
+    max-width: 280px;
+    padding: 11px 18px;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.action-row-side {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-left: auto;
+}
+
+@media (max-width: 520px) {
+    .action-row-side {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .action-row-side .btn {
+        flex: 1;
+    }
+
+    .btn-flash {
+        max-width: none;
+    }
+}
+
+/* 清空 flash：描边样式弱化视觉重量，悬停时填充警示色 */
+.btn-danger {
+    background-color: transparent;
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+}
+
+.btn-danger:not(:disabled):hover {
+    background-color: var(--color-danger);
+    color: #ffffff;
+}
+
+/* 进度区：标签 + 百分比 + 进度条 */
+.progress-area {
+    margin-top: 18px;
+}
+
+.progress-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+
+.progress-percent {
+    font-family: var(--font-mono);
+    color: var(--color-text-primary);
+}
+
+/* 进度条 */
+.progress-bar {
+    margin-top: 0;
+    height: 10px;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
 /* 固件版本切换 */
 .version-switch {
     display: inline-flex;
@@ -268,15 +371,6 @@ body {
 }
 
 /* 进度条 */
-.progress-bar {
-    margin-top: 16px;
-    height: 10px;
-    background-color: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    overflow: hidden;
-}
-
 .progress-fill {
     width: 0;
     height: 100%;

@@ -90,6 +90,8 @@ const FIRMWARE_PLATFORM_STORAGE_KEY = 'picoflash-firmware-platform';
 let progressPercent = 0;
 /** @type {HTMLElement} */
 const progressFill = document.getElementById('progressFill');
+/** @type {HTMLElement} */
+const progressPercentText = document.getElementById('progressPercentText');
 
 // 连接按钮
 const connectBtn = /** @type {HTMLButtonElement} */ (document.getElementById('connectBtn'));
@@ -136,6 +138,7 @@ const versionLatestBtn = /** @type {HTMLButtonElement} */ (document.getElementBy
 const platformSwitch = document.getElementById('platformSwitch');
 const platformAndroidBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformAndroidBtn'));
 const platformIosBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformIosBtn'));
+const firmwareHint = document.getElementById('firmwareHint');
 const downloadBtn = /** @type {HTMLButtonElement} */ (document.getElementById('downloadBtn'));
 const webusbModal = document.getElementById('webusbModal');
 const modalCloseBtn = /** @type {HTMLButtonElement} */ (document.getElementById('modalCloseBtn'));
@@ -162,6 +165,8 @@ function startup() {
     if (!('usb' in navigator)) {
         showWebusbModal();
         flashBtn.hidden = true;
+        // 下载固件成为此环境下唯一可用操作，升级为主按钮样式
+        downloadBtn.classList.add('btn-primary');
         eraseBtn.disabled = true;
         connectBtn.disabled = true;
         updateStatus('当前浏览器不支持 WebUSB，可下载固件后手动烧录');
@@ -281,6 +286,7 @@ function updateProgress(error = false) {
     }
 
     progressFill.style.width = `${progressPercent}%`;
+    progressPercentText.textContent = progressPercent > 0 ? `${Math.round(progressPercent)}%` : '待机';
 
     if (error) {
         progressFill.style.backgroundColor = 'var(--color-danger)';
@@ -644,6 +650,14 @@ function updatePlatformUi() {
     platformIosBtn.setAttribute('aria-pressed', String(ios));
 }
 
+/** 更新当前固件说明文案（跟随渠道与平台变化）。 */
+function updateFirmwareHint() {
+    if (!firmwareHint) return;
+    firmwareHint.textContent = firmwareChannel === 'latest'
+        ? '最新版为调试构建，不区分目标平台：每次烧录前自动拉取最新构建'
+        : `将烧录稳定版固件（目标平台：${firmwarePlatform === 'ios' ? 'iOS' : '安卓'}），每次烧录前自动检查更新`;
+}
+
 //
 // 固件版本切换
 //
@@ -694,6 +708,7 @@ function updateVersionUi() {
     versionStableBtn.setAttribute('aria-pressed', String(stable));
     versionLatestBtn.setAttribute('aria-pressed', String(!stable));
     updatePlatformUi();
+    updateFirmwareHint();
 }
 
 //

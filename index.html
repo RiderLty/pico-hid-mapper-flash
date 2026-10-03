@@ -42,22 +42,36 @@
         <section class="card">
             <div class="card-header">
                 <h2>烧录操作</h2>
-                <div class="version-switch" role="group" aria-label="选择固件版本">
-                    <button id="versionStableBtn" class="version-option is-active" type="button" data-channel="stable" aria-pressed="true">稳定版</button>
-                    <button id="versionLatestBtn" class="version-option" type="button" data-channel="latest" aria-pressed="false">最新版</button>
-                </div>
-                <div class="version-switch" id="platformSwitch" role="group" aria-label="选择目标平台" hidden>
-                    <button id="platformAndroidBtn" class="version-option is-active" type="button" data-platform="android" aria-pressed="true">安卓</button>
-                    <button id="platformIosBtn" class="version-option" type="button" data-platform="ios" aria-pressed="false">iOS</button>
+                <div class="switch-group">
+                    <div class="version-switch" role="group" aria-label="选择固件版本">
+                        <button id="versionStableBtn" class="version-option is-active" type="button" data-channel="stable" aria-pressed="true">稳定版</button>
+                        <button id="versionLatestBtn" class="version-option" type="button" data-channel="latest" aria-pressed="false">最新版</button>
+                    </div>
+                    <div class="version-switch" id="platformSwitch" role="group" aria-label="选择目标平台" hidden>
+                        <button id="platformAndroidBtn" class="version-option is-active" type="button" data-platform="android" aria-pressed="true">安卓</button>
+                        <button id="platformIosBtn" class="version-option" type="button" data-platform="ios" aria-pressed="false">iOS</button>
+                    </div>
                 </div>
             </div>
-            <div class="row">
-                <button id="flashBtn" class="btn btn-primary">烧录固件</button>
-                <button id="downloadBtn" class="btn" type="button">下载固件</button>
-                <button id="eraseBtn" class="btn btn-danger">清空flash</button>
+
+            <p id="firmwareHint" class="firmware-hint">将烧录稳定版固件（目标平台：安卓），每次烧录前自动检查更新</p>
+
+            <div class="action-row">
+                <button id="flashBtn" class="btn btn-primary btn-flash">⚡ 烧录固件</button>
+                <div class="action-row-side">
+                    <button id="downloadBtn" class="btn btn-secondary" type="button">下载固件</button>
+                    <button id="eraseBtn" class="btn btn-danger">清空 flash</button>
+                </div>
             </div>
-            <div class="progress-bar">
-                <div id="progressFill" class="progress-fill"></div>
+
+            <div class="progress-area">
+                <div class="progress-meta">
+                    <span>烧录进度</span>
+                    <span id="progressPercentText" class="progress-percent">待机</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
             </div>
         </section>
 
