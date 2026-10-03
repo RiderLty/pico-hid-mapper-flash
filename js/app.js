@@ -640,10 +640,13 @@ function setFirmwarePlatform(platform) {
     logActivity(`目标平台已切换为：${platform === 'ios' ? 'iOS' : '安卓'}`, 'info');
 }
 
-/** 更新平台切换按钮的激活态与可见性（最新版渠道隐藏——调试构建不区分平台）。 */
+/**
+ * 更新平台切换按钮的激活态与可见性（最新版渠道不可用——调试构建不区分平台）。
+ * 用 visibility 隐藏并保留占位，避免切换渠道时标题行布局跳动。
+ */
 function updatePlatformUi() {
     const ios = firmwarePlatform === 'ios';
-    if (platformSwitch) platformSwitch.hidden = firmwareChannel !== 'stable';
+    if (platformSwitch) platformSwitch.classList.toggle('is-invisible', firmwareChannel !== 'stable');
     platformAndroidBtn.classList.toggle('is-active', !ios);
     platformIosBtn.classList.toggle('is-active', ios);
     platformAndroidBtn.setAttribute('aria-pressed', String(!ios));

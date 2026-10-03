@@ -162,9 +162,14 @@ body {
     gap: 8px;
 }
 
-/* hidden 属性必须显式声明，否则会被 .version-switch 的 display 覆盖 */
-.version-switch[hidden] {
-    display: none;
+/* 平台切换在最新版渠道下仅隐藏视觉、保留占位，避免切换稳定版/最新版时标题行跳动 */
+.version-switch.platform-switch {
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+.version-switch.platform-switch.is-invisible {
+    opacity: 0;
+    visibility: hidden;
 }
 
 /* 当前固件说明 */
