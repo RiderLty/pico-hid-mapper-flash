@@ -163,12 +163,14 @@ function startup() {
     firmwarePlatform = loadFirmwarePlatform();
     updateVersionUi();
 
-    // WebUSB 不可用：弹窗告知 + 「烧录固件」按钮替换为「下载固件」——
+    // WebUSB 可用：在线烧录是唯一路径，不展示「下载固件」按钮（HTML 中默认 hidden）
+    // WebUSB 不可用：弹窗告知，并把「烧录固件」替换为「下载固件」——
     // 不支持的环境只允许下载，不允许在线烧录（擦除 / 连接同样禁用）
     if (!('usb' in navigator)) {
         showWebusbModal();
         flashBtn.hidden = true;
         // 下载固件成为此环境下唯一可用操作，升级为主按钮样式
+        downloadBtn.hidden = false;
         downloadBtn.classList.add('btn-primary');
         eraseBtn.disabled = true;
         connectBtn.disabled = true;

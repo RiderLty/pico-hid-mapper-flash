@@ -110,6 +110,11 @@ body {
     cursor: not-allowed;
 }
 
+/* hidden 属性需显式声明，避免被后续 .btn 系列的 display 规则覆盖 */
+.btn[hidden] {
+    display: none;
+}
+
 .btn:not(:disabled):hover {
     filter: brightness(1.15);
 }
