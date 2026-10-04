@@ -12,6 +12,9 @@ export const FIRMWARE_STABLE_HASH_URL = 'https://kvstore.rd5isto.org/api/kv/pico
 /** @type {string} 获取 iOS 目标平台稳定版固件 hash 的 KV 接口地址（安卓稳定版沿用上面的 key） */
 export const FIRMWARE_STABLE_HASH_IOS_URL = 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-stable-hash-ios';
 
+/** @type {string} host测试 平台固件地址（固定地址，不走版本 hash 接口，也不随渠道更新） */
+export const FIRMWARE_HOST_TEST_URL = 'https://1833788059.cdn.123clouddisk.com/1833788059/direct/projects/pico-hid-mapper/PIOKMbox.uf2';
+
 /** @type {string} 获取最新版固件 hash 的 KV 接口地址 */
 export const FIRMWARE_LATEST_HASH_URL = 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-latest-hash';
 

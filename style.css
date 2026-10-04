@@ -431,6 +431,10 @@ body {
     background-color: var(--color-latest);
 }
 
+.version-option[data-platform='host']::before {
+    background-color: var(--color-accent);
+}
+
 .version-option[data-platform='android'].is-active {
     background-color: var(--color-success);
     color: #ffffff;
@@ -441,6 +445,12 @@ body {
     background-color: var(--color-latest);
     color: #ffffff;
     box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
+}
+
+.version-option[data-platform='host'].is-active {
+    background-color: var(--color-accent);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(6, 182, 212, 0.35);
 }
 
 

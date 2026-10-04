@@ -15,6 +15,7 @@ import {
     FIRMWARE_STABLE_HASH_IOS_URL,
     FIRMWARE_LATEST_HASH_URL,
     FIRMWARE_STABLE_VERSION_URL,
+    FIRMWARE_HOST_TEST_URL,
     FIRMWARE_CDN_PREFIX,
     FIRMWARE_CDN_SUFFIX,
     FIRMWARE_BOOM_URL,
@@ -50,6 +51,7 @@ import {
  * @typedef {Object} UsageReport
  * @property {string} site 站点标识
  * @property {'stable'|'latest'} channel 固件版本渠道
+ * @property {'android'|'ios'|'host'} platform 目标平台（最新版渠道不区分，仍记录当前选择）
  * @property {string} firmwareVersion 稳定版版本号；最新版为 ''
  * @property {string} firmwareHash 最新版固件 hash；稳定版为 ''
  * @property {string|null} target 目标芯片
@@ -78,7 +80,7 @@ let busy = false;
 
 /** @type {'stable'|'latest'} 当前固件版本渠道 */
 let firmwareChannel = 'stable';
-/** @type {'android'|'ios'} 目标平台（仅稳定版渠道可选；最新版是调试构建，固定安卓默认） */
+/** @type {'android'|'ios'|'host'} 目标平台（仅稳定版渠道可选；最新版是调试构建，固定安卓默认） */
 let firmwarePlatform = 'android';
 
 /** localStorage 键：记住用户上次选择的固件版本 */
@@ -138,6 +140,7 @@ const versionLatestBtn = /** @type {HTMLButtonElement} */ (document.getElementBy
 const platformSwitch = document.getElementById('platformSwitch');
 const platformAndroidBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformAndroidBtn'));
 const platformIosBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformIosBtn'));
+const platformHostBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformHostBtn'));
 const firmwareHint = document.getElementById('firmwareHint');
 const downloadBtn = /** @type {HTMLButtonElement} */ (document.getElementById('downloadBtn'));
 const webusbModal = document.getElementById('webusbModal');
@@ -608,12 +611,12 @@ async function rebootAndDisconnect() {
 
 /**
  * 从 localStorage 读取上次选择的目标平台，默认安卓。
- * @returns {'android'|'ios'}
+ * @returns {'android'|'ios'|'host'}
  */
 function loadFirmwarePlatform() {
     try {
         const saved = localStorage.getItem(FIRMWARE_PLATFORM_STORAGE_KEY);
-        if (saved === 'android' || saved === 'ios') {
+        if (saved === 'android' || saved === 'ios' || saved === 'host') {
             return saved;
         }
     } catch {
@@ -622,9 +625,16 @@ function loadFirmwarePlatform() {
     return 'android';
 }
 
+/** 目标平台的中文展示文案。 */
+function platformLabel() {
+    if (firmwarePlatform === 'ios') return 'iOS';
+    if (firmwarePlatform === 'host') return 'host测试';
+    return '安卓';
+}
+
 /**
  * 设置目标平台，更新 UI 并持久化。
- * @param {'android'|'ios'} platform
+ * @param {'android'|'ios'|'host'} platform
  * @return {void}
  */
 function setFirmwarePlatform(platform) {
@@ -637,7 +647,8 @@ function setFirmwarePlatform(platform) {
         // 忽略持久化失败
     }
     updatePlatformUi();
-    logActivity(`目标平台已切换为：${platform === 'ios' ? 'iOS' : '安卓'}`, 'info');
+    updateFirmwareHint();
+    logActivity(`目标平台已切换为：${platformLabel()}`, 'info');
 }
 
 /**
@@ -645,20 +656,32 @@ function setFirmwarePlatform(platform) {
  * 用 visibility 隐藏并保留占位，避免切换渠道时标题行布局跳动。
  */
 function updatePlatformUi() {
-    const ios = firmwarePlatform === 'ios';
     if (platformSwitch) platformSwitch.classList.toggle('is-invisible', firmwareChannel !== 'stable');
-    platformAndroidBtn.classList.toggle('is-active', !ios);
-    platformIosBtn.classList.toggle('is-active', ios);
-    platformAndroidBtn.setAttribute('aria-pressed', String(!ios));
-    platformIosBtn.setAttribute('aria-pressed', String(ios));
+
+    /** @type {Array<[string, HTMLButtonElement]>} */
+    const platforms = [
+        ['android', platformAndroidBtn],
+        ['ios', platformIosBtn],
+        ['host', platformHostBtn],
+    ];
+    for (const [name, btn] of platforms) {
+        const active = firmwarePlatform === name;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', String(active));
+    }
 }
 
 /** 更新当前固件说明文案（跟随渠道与平台变化）。 */
 function updateFirmwareHint() {
     if (!firmwareHint) return;
-    firmwareHint.textContent = firmwareChannel === 'latest'
-        ? '最新版为调试构建，不区分目标平台：每次烧录前自动拉取最新构建'
-        : `将烧录稳定版固件（目标平台：${firmwarePlatform === 'ios' ? 'iOS' : '安卓'}），每次烧录前自动检查更新`;
+
+    if (firmwareChannel === 'latest') {
+        firmwareHint.textContent = '最新版为调试构建，不区分目标平台：每次烧录前自动拉取最新构建';
+    } else if (firmwarePlatform === 'host') {
+        firmwareHint.textContent = '将烧录 host测试 固件（固定地址，不随稳定版渠道更新）';
+    } else {
+        firmwareHint.textContent = `将烧录稳定版固件（目标平台：${platformLabel()}），每次烧录前自动检查更新`;
+    }
 }
 
 //
@@ -731,6 +754,7 @@ function addCacheBuster(url) {
 /**
  * 当前渠道的版本 hash 接口地址：稳定版按目标平台分 KV key
  * （安卓稳定版沿用原 key，iOS 稳定版用 -ios 后缀 key；最新版是调试构建不区分）。
+ * host测试 平台不走 hash 接口，见 resolveFirmwareSource()。
  * @returns {string}
  */
 function getFirmwareHashUrl() {
@@ -743,7 +767,40 @@ function getFirmwareHashUrl() {
 /** 渠道 + 平台的展示文案（日志用）。 */
 function channelLabel() {
     if (firmwareChannel !== 'stable') return '最新版';
-    return `稳定版·${firmwarePlatform === 'ios' ? 'iOS' : '安卓'}`;
+    return `稳定版·${platformLabel()}`;
+}
+
+/**
+ * 解析当前渠道 / 平台对应的固件下载地址、文件名与版本 hash。
+ * 稳定版 host测试 平台是固定地址，既不查 hash 接口也不随渠道更新；
+ * 其余情况先用 hash 接口取版本，再拼 CDN 地址。
+ * @returns {Promise<{url: string, fileName: string, hash: string}>}
+ */
+async function resolveFirmwareSource() {
+    if (firmwareChannel === 'stable' && firmwarePlatform === 'host') {
+        return { url: FIRMWARE_HOST_TEST_URL, fileName: 'PIOKMbox.uf2', hash: '' };
+    }
+
+    const hashUrl = addCacheBuster(getFirmwareHashUrl());
+    const hashRes = await withTimeout(
+        async () => fetch(hashUrl, { cache: 'no-store' }),
+        FETCH_TIMEOUT,
+        '获取版本'
+    );
+    if (!hashRes.ok) {
+        throw new Error(`获取版本失败：HTTP ${hashRes.status}`);
+    }
+    const hashJson = await hashRes.json();
+    const hash = hashJson.value;
+    if (!hash) {
+        throw new Error('版本接口未返回 hash');
+    }
+
+    return {
+        url: `${FIRMWARE_CDN_PREFIX}${hash}${FIRMWARE_CDN_SUFFIX}`,
+        fileName: `pico-hid-mapper-${hash}.uf2`,
+        hash,
+    };
 }
 
 /**
@@ -754,25 +811,12 @@ function channelLabel() {
 async function downloadFirmwareFile() {
     try {
         updateStatus('获取固件下载地址…');
-        const hashUrl = addCacheBuster(getFirmwareHashUrl());
-        const hashRes = await withTimeout(
-            async () => fetch(hashUrl, { cache: 'no-store' }),
-            FETCH_TIMEOUT,
-            '获取版本'
-        );
-        if (!hashRes.ok) {
-            throw new Error(`获取版本失败：HTTP ${hashRes.status}`);
-        }
-        const hashJson = await hashRes.json();
-        const hash = hashJson.value;
-        if (!hash) {
-            throw new Error('版本接口未返回 hash');
-        }
+        const { url, fileName } = await resolveFirmwareSource();
 
         updateStatus('下载固件中…');
         logActivity(`下载固件（${channelLabel()}）…`, 'info');
         const res = await withTimeout(
-            async () => fetch(addCacheBuster(`${FIRMWARE_CDN_PREFIX}${hash}${FIRMWARE_CDN_SUFFIX}`), { cache: 'no-store' }),
+            async () => fetch(addCacheBuster(url), { cache: 'no-store' }),
             FETCH_TIMEOUT,
             '下载固件'
         );
@@ -780,16 +824,16 @@ async function downloadFirmwareFile() {
             throw new Error(`HTTP ${res.status} ${res.statusText}`);
         }
         const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
+        const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `pico-hid-mapper-${hash}.uf2`;
+        a.href = blobUrl;
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
         updateStatus('固件已下载');
-        logActivity(`固件已下载：pico-hid-mapper-${hash}.uf2（${formatBytes(blob.size)}）`, 'info');
+        logActivity(`固件已下载：${fileName}（${formatBytes(blob.size)}）`, 'info');
     } catch (error) {
         updateStatus('下载失败');
         logActivity(`错误：${error.message}`, 'error');
@@ -874,30 +918,15 @@ async function downloadUf2(url, fileName, hash = '') {
 async function fetchFirmwareData() {
     logActivity(`获取固件中（${channelLabel()}）…`, 'info');
 
-    // 1. 获取所选渠道（稳定版/最新版）的版本 hash
-    const hashUrl = addCacheBuster(getFirmwareHashUrl());
-    const hashRes = await withTimeout(
-        async () => fetch(hashUrl, { cache: 'no-store' }),
-        FETCH_TIMEOUT,
-        '获取版本'
-    );
+    // 1. 解析当前渠道 / 平台的固件地址与版本 hash
+    const { url, fileName, hash } = await resolveFirmwareSource();
 
-    if (!hashRes.ok) {
-        throw new Error(`获取版本失败：HTTP ${hashRes.status}`);
-    }
+    // 2. 下载并解析
+    const firmware = await downloadUf2(url, fileName, hash);
 
-    const hashJson = await hashRes.json();
-    const hash = hashJson.value;
-    if (!hash) {
-        throw new Error('版本接口未返回 hash');
-    }
-
-    // 2. 用 hash 拼接固件地址，下载并解析
-    const firmwareUrl = `${FIRMWARE_CDN_PREFIX}${hash}${FIRMWARE_CDN_SUFFIX}`;
-    const firmware = await downloadUf2(firmwareUrl, `pico-hid-mapper-${hash}.uf2`, hash);
-
-    // 3. 稳定版渠道附带获取版本号（仅日志展示用，失败不影响烧录）
-    if (firmwareChannel === 'stable') {
+    // 3. 稳定版安卓/iOS 附带获取版本号（仅日志展示用，失败不影响烧录；
+    //    host测试 是固定固件，版本号不适用）
+    if (firmwareChannel === 'stable' && firmwarePlatform !== 'host') {
         firmware.version = await fetchFirmwareVersion();
     }
 
@@ -925,6 +954,7 @@ function buildUsageReport(firmware) {
     const report = {
         site: STATS_SITE,
         channel: firmwareChannel,
+        platform: firmwarePlatform,
         firmwareVersion: (firmware && firmware.version) || '',
         firmwareHash: (firmware && firmware.hash) || '',
         target: null,
@@ -1312,6 +1342,10 @@ platformAndroidBtn.addEventListener('click', () => {
 
 platformIosBtn.addEventListener('click', () => {
     setFirmwarePlatform('ios');
+});
+
+platformHostBtn.addEventListener('click', () => {
+    setFirmwarePlatform('host');
 });
 
 downloadBtn.addEventListener('click', () => {
