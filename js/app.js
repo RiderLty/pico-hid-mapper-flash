@@ -678,7 +678,7 @@ function updateFirmwareHint() {
     if (firmwareChannel === 'latest') {
         firmwareHint.textContent = '最新版为调试构建，不区分目标平台：每次烧录前自动拉取最新构建';
     } else if (firmwarePlatform === 'host') {
-        firmwareHint.textContent = '将烧录 host测试 固件（固定地址，不随稳定版渠道更新）';
+        firmwareHint.textContent = '烧录键鼠透传固件，用于测试板子 host 口是否正常工作';
     } else {
         firmwareHint.textContent = `将烧录稳定版固件（目标平台：${platformLabel()}），每次烧录前自动检查更新`;
     }
