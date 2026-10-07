@@ -139,7 +139,8 @@ const versionStableBtn = /** @type {HTMLButtonElement} */ (document.getElementBy
 const versionLatestBtn = /** @type {HTMLButtonElement} */ (document.getElementById('versionLatestBtn'));
 const platformSwitch = document.getElementById('platformSwitch');
 const platformAndroidBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformAndroidBtn'));
-const platformIosBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformIosBtn'));
+// iOS 渠道暂不可用，按钮已注释
+// const platformIosBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformIosBtn'));
 const platformHostBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformHostBtn'));
 const firmwareHint = document.getElementById('firmwareHint');
 const downloadBtn = /** @type {HTMLButtonElement} */ (document.getElementById('downloadBtn'));
@@ -618,7 +619,8 @@ async function rebootAndDisconnect() {
 function loadFirmwarePlatform() {
     try {
         const saved = localStorage.getItem(FIRMWARE_PLATFORM_STORAGE_KEY);
-        if (saved === 'android' || saved === 'ios' || saved === 'host') {
+        // iOS 渠道暂不可用：旧用户存的 'ios' 一律回退安卓
+        if (saved === 'android' || saved === 'host') {
             return saved;
         }
     } catch {
@@ -629,7 +631,8 @@ function loadFirmwarePlatform() {
 
 /** 目标平台的中文展示文案。 */
 function platformLabel() {
-    if (firmwarePlatform === 'ios') return 'iOS';
+    // iOS 渠道暂不可用，暂不展示文案
+    // if (firmwarePlatform === 'ios') return 'iOS';
     if (firmwarePlatform === 'host') return 'host测试';
     return '安卓';
 }
@@ -663,7 +666,8 @@ function updatePlatformUi() {
     /** @type {Array<[string, HTMLButtonElement]>} */
     const platforms = [
         ['android', platformAndroidBtn],
-        ['ios', platformIosBtn],
+        // iOS 渠道暂不可用，按钮已注释
+        // ['ios', platformIosBtn],
         ['host', platformHostBtn],
     ];
     for (const [name, btn] of platforms) {
@@ -1342,9 +1346,10 @@ platformAndroidBtn.addEventListener('click', () => {
     setFirmwarePlatform('android');
 });
 
-platformIosBtn.addEventListener('click', () => {
-    setFirmwarePlatform('ios');
-});
+// iOS 渠道暂不可用，按钮已注释
+// platformIosBtn.addEventListener('click', () => {
+//     setFirmwarePlatform('ios');
+// });
 
 platformHostBtn.addEventListener('click', () => {
     setFirmwarePlatform('host');
