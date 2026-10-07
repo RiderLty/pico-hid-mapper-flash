@@ -686,7 +686,7 @@ function updateFirmwareHint() {
     } else if (firmwarePlatform === 'host') {
         firmwareHint.textContent = '烧录键鼠透传固件，用于测试板子 host 口是否正常工作';
     } else {
-        firmwareHint.textContent = `将烧录稳定版固件（目标平台：${platformLabel()}），每次烧录前自动检查更新`;
+        firmwareHint.textContent = '将烧录稳定版固件（固件自动适配设备平台），每次烧录前自动检查更新';
     }
 }
 
