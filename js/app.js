@@ -50,8 +50,8 @@ import {
 /**
  * @typedef {Object} UsageReport
  * @property {string} site 站点标识
- * @property {'stable'|'latest'} channel 固件版本渠道
- * @property {'android'|'ios'|'host'} platform 目标平台（最新版渠道不区分，仍记录当前选择）
+ * @property {'stable'|'latest'|'host'} channel 固件版本渠道
+ * @property {'android'|'host'} platform 目标平台（host测试 渠道为 'host'，其余记 'android'）
  * @property {string} firmwareVersion 稳定版版本号；最新版为 ''
  * @property {string} firmwareHash 最新版固件 hash；稳定版为 ''
  * @property {string|null} target 目标芯片
@@ -78,14 +78,16 @@ let lastStatus = null;
 /** @type {boolean} 是否正在执行获取/烧录/重启等操作（防止重复点击） */
 let busy = false;
 
-/** @type {'stable'|'latest'} 当前固件版本渠道 */
+/** @type {'stable'|'latest'|'host'} 当前固件版本渠道（host测试 作为独立渠道选项） */
 let firmwareChannel = 'stable';
-/** @type {'android'|'ios'|'host'} 目标平台（仅稳定版渠道可选；最新版是调试构建，固定安卓默认） */
-let firmwarePlatform = 'android';
+// 平台选择已合并进版本渠道，不再单独维护
+// /** @type {'android'|'ios'|'host'} 目标平台（仅稳定版渠道可选；最新版是调试构建，固定安卓默认） */
+// let firmwarePlatform = 'android';
 
 /** localStorage 键：记住用户上次选择的固件版本 */
 const FIRMWARE_CHANNEL_STORAGE_KEY = 'picoflash-firmware-channel';
-const FIRMWARE_PLATFORM_STORAGE_KEY = 'picoflash-firmware-platform';
+// 平台选择已合并进版本渠道，此键仅保留供历史数据参考
+// const FIRMWARE_PLATFORM_STORAGE_KEY = 'picoflash-firmware-platform';
 
 // Progress bar
 /** @type {number} */
@@ -134,14 +136,16 @@ const eraseBtn = /** @type {HTMLButtonElement} */ (document.getElementById('eras
 /** @type {HTMLElement} */
 const activityContent = document.getElementById('activityContent');
 
-// 固件版本切换
+// 固件版本切换（host测试 已并入版本渠道）
+const versionHostBtn = /** @type {HTMLButtonElement} */ (document.getElementById('versionHostBtn'));
 const versionStableBtn = /** @type {HTMLButtonElement} */ (document.getElementById('versionStableBtn'));
 const versionLatestBtn = /** @type {HTMLButtonElement} */ (document.getElementById('versionLatestBtn'));
-const platformSwitch = document.getElementById('platformSwitch');
-const platformAndroidBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformAndroidBtn'));
+// 平台选择已合并进版本渠道，控件已注释
+// const platformSwitch = document.getElementById('platformSwitch');
+// const platformAndroidBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformAndroidBtn'));
 // iOS 渠道暂不可用，按钮已注释
 // const platformIosBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformIosBtn'));
-const platformHostBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformHostBtn'));
+// const platformHostBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformHostBtn'));
 const firmwareHint = document.getElementById('firmwareHint');
 const downloadBtn = /** @type {HTMLButtonElement} */ (document.getElementById('downloadBtn'));
 const webusbModal = document.getElementById('webusbModal');
@@ -159,9 +163,9 @@ function startup() {
     // 记录已加载
     logActivity('picoflash 已加载', 'info');
 
-    // 恢复上次选择的固件版本（默认稳定版）与目标平台（默认安卓）
+    // 恢复上次选择的固件版本（默认稳定版）；平台已并入版本渠道，不再单独恢复
     firmwareChannel = loadFirmwareChannel();
-    firmwarePlatform = loadFirmwarePlatform();
+    // firmwarePlatform = loadFirmwarePlatform();
     updateVersionUi();
 
     // WebUSB 可用：在线烧录是唯一路径，不展示「下载固件」按钮（HTML 中默认 hidden）
@@ -609,82 +613,82 @@ async function rebootAndDisconnect() {
 }
 
 //
-// 目标平台切换（仅稳定版渠道生效）
+// 目标平台切换（已合并进版本渠道，整块保留备查）
 //
 
-/**
- * 从 localStorage 读取上次选择的目标平台，默认安卓。
- * @returns {'android'|'ios'|'host'}
- */
-function loadFirmwarePlatform() {
-    try {
-        const saved = localStorage.getItem(FIRMWARE_PLATFORM_STORAGE_KEY);
-        // iOS 渠道暂不可用：旧用户存的 'ios' 一律回退安卓
-        if (saved === 'android' || saved === 'host') {
-            return saved;
-        }
-    } catch {
-        // localStorage 不可用（隐私模式等），回退默认值
-    }
-    return 'android';
-}
+// /**
+//  * 从 localStorage 读取上次选择的目标平台，默认安卓。
+//  * @returns {'android'|'ios'|'host'}
+//  */
+// function loadFirmwarePlatform() {
+//     try {
+//         const saved = localStorage.getItem(FIRMWARE_PLATFORM_STORAGE_KEY);
+//         // iOS 渠道暂不可用：旧用户存的 'ios' 一律回退安卓
+//         if (saved === 'android' || saved === 'host') {
+//             return saved;
+//         }
+//     } catch {
+//         // localStorage 不可用（隐私模式等），回退默认值
+//     }
+//     return 'android';
+// }
 
-/** 目标平台的中文展示文案。 */
-function platformLabel() {
-    // iOS 渠道暂不可用，暂不展示文案
-    // if (firmwarePlatform === 'ios') return 'iOS';
-    if (firmwarePlatform === 'host') return 'host测试';
-    return '安卓';
-}
+// /** 目标平台的中文展示文案。 */
+// function platformLabel() {
+//     // iOS 渠道暂不可用，暂不展示文案
+//     // if (firmwarePlatform === 'ios') return 'iOS';
+//     if (firmwarePlatform === 'host') return 'host测试';
+//     return '安卓';
+// }
 
-/**
- * 设置目标平台，更新 UI 并持久化。
- * @param {'android'|'ios'|'host'} platform
- * @return {void}
- */
-function setFirmwarePlatform(platform) {
-    if (platform === firmwarePlatform) return;
+// /**
+//  * 设置目标平台，更新 UI 并持久化。
+//  * @param {'android'|'ios'|'host'} platform
+//  * @return {void}
+//  */
+// function setFirmwarePlatform(platform) {
+//     if (platform === firmwarePlatform) return;
 
-    firmwarePlatform = platform;
-    try {
-        localStorage.setItem(FIRMWARE_PLATFORM_STORAGE_KEY, platform);
-    } catch {
-        // 忽略持久化失败
-    }
-    updatePlatformUi();
-    updateFirmwareHint();
-    logActivity(`目标平台已切换为：${platformLabel()}`, 'info');
-}
+//     firmwarePlatform = platform;
+//     try {
+//         localStorage.setItem(FIRMWARE_PLATFORM_STORAGE_KEY, platform);
+//     } catch {
+//         // 忽略持久化失败
+//     }
+//     updatePlatformUi();
+//     updateFirmwareHint();
+//     logActivity(`目标平台已切换为：${platformLabel()}`, 'info');
+// }
 
-/**
- * 更新平台切换按钮的激活态与可见性（最新版渠道不可用——调试构建不区分平台）。
- * 用 visibility 隐藏并保留占位，避免切换渠道时标题行布局跳动。
- */
-function updatePlatformUi() {
-    if (platformSwitch) platformSwitch.classList.toggle('is-invisible', firmwareChannel !== 'stable');
+// /**
+//  * 更新平台切换按钮的激活态与可见性（最新版渠道不可用——调试构建不区分平台）。
+//  * 用 visibility 隐藏并保留占位，避免切换渠道时标题行布局跳动。
+//  */
+// function updatePlatformUi() {
+//     if (platformSwitch) platformSwitch.classList.toggle('is-invisible', firmwareChannel !== 'stable');
 
-    /** @type {Array<[string, HTMLButtonElement]>} */
-    const platforms = [
-        ['android', platformAndroidBtn],
-        // iOS 渠道暂不可用，按钮已注释
-        // ['ios', platformIosBtn],
-        ['host', platformHostBtn],
-    ];
-    for (const [name, btn] of platforms) {
-        const active = firmwarePlatform === name;
-        btn.classList.toggle('is-active', active);
-        btn.setAttribute('aria-pressed', String(active));
-    }
-}
+//     /** @type {Array<[string, HTMLButtonElement]>} */
+//     const platforms = [
+//         ['android', platformAndroidBtn],
+//         // iOS 渠道暂不可用，按钮已注释
+//         // ['ios', platformIosBtn],
+//         ['host', platformHostBtn],
+//     ];
+//     for (const [name, btn] of platforms) {
+//         const active = firmwarePlatform === name;
+//         btn.classList.toggle('is-active', active);
+//         btn.setAttribute('aria-pressed', String(active));
+//     }
+// }
 
-/** 更新当前固件说明文案（跟随渠道与平台变化）。 */
+/** 更新当前固件说明文案（跟随版本渠道变化）。 */
 function updateFirmwareHint() {
     if (!firmwareHint) return;
 
-    if (firmwareChannel === 'latest') {
-        firmwareHint.textContent = '最新版为调试构建，不区分目标平台：每次烧录前自动拉取最新构建';
-    } else if (firmwarePlatform === 'host') {
+    if (firmwareChannel === 'host') {
         firmwareHint.textContent = '烧录键鼠透传固件，用于测试板子 host 口是否正常工作';
+    } else if (firmwareChannel === 'latest') {
+        firmwareHint.textContent = '最新版为调试构建，不区分目标平台：每次烧录前自动拉取最新构建';
     } else {
         firmwareHint.textContent = '将烧录稳定版固件（固件自动适配设备平台），每次烧录前自动检查更新';
     }
@@ -696,12 +700,12 @@ function updateFirmwareHint() {
 
 /**
  * 从 localStorage 读取上次选择的固件版本，默认稳定版。
- * @returns {'stable'|'latest'}
+ * @returns {'stable'|'latest'|'host'}
  */
 function loadFirmwareChannel() {
     try {
         const saved = localStorage.getItem(FIRMWARE_CHANNEL_STORAGE_KEY);
-        if (saved === 'stable' || saved === 'latest') {
+        if (saved === 'stable' || saved === 'latest' || saved === 'host') {
             return saved;
         }
     } catch {
@@ -712,7 +716,7 @@ function loadFirmwareChannel() {
 
 /**
  * 设置固件版本渠道，更新 UI 并持久化。
- * @param {'stable'|'latest'} channel
+ * @param {'stable'|'latest'|'host'} channel
  * @return {void}
  */
 function setFirmwareChannel(channel) {
@@ -725,7 +729,7 @@ function setFirmwareChannel(channel) {
         // 忽略持久化失败
     }
     updateVersionUi();
-    logActivity(`固件版本已切换为：${channel === 'stable' ? '稳定版' : '最新版'}`, 'info');
+    logActivity(`固件版本已切换为：${channelLabel()}`, 'info');
 }
 
 /**
@@ -733,13 +737,17 @@ function setFirmwareChannel(channel) {
  * @return {void}
  */
 function updateVersionUi() {
-    const stable = firmwareChannel === 'stable';
-
-    versionStableBtn.classList.toggle('is-active', stable);
-    versionLatestBtn.classList.toggle('is-active', !stable);
-    versionStableBtn.setAttribute('aria-pressed', String(stable));
-    versionLatestBtn.setAttribute('aria-pressed', String(!stable));
-    updatePlatformUi();
+    /** @type {Array<[string, HTMLButtonElement]>} */
+    const channels = [
+        ['host', versionHostBtn],
+        ['latest', versionLatestBtn],
+        ['stable', versionStableBtn],
+    ];
+    for (const [name, btn] of channels) {
+        const active = firmwareChannel === name;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', String(active));
+    }
     updateFirmwareHint();
 }
 
@@ -758,32 +766,32 @@ function addCacheBuster(url) {
 }
 
 /**
- * 当前渠道的版本 hash 接口地址：稳定版按目标平台分 KV key
- * （安卓稳定版沿用原 key，iOS 稳定版用 -ios 后缀 key；最新版是调试构建不区分）。
- * host测试 平台不走 hash 接口，见 resolveFirmwareSource()。
+ * 当前渠道的版本 hash 接口地址（host测试 渠道不走 hash 接口，见 resolveFirmwareSource()）。
+ * 注：iOS 曾按平台分 KV key（-ios 后缀），平台合并进渠道后不再区分。
  * @returns {string}
  */
 function getFirmwareHashUrl() {
     if (firmwareChannel === 'stable') {
-        return firmwarePlatform === 'ios' ? FIRMWARE_STABLE_HASH_IOS_URL : FIRMWARE_STABLE_HASH_URL;
+        return FIRMWARE_STABLE_HASH_URL;
     }
     return FIRMWARE_LATEST_HASH_URL;
 }
 
-/** 渠道 + 平台的展示文案（日志用）。 */
+/** 渠道展示文案（日志用）。 */
 function channelLabel() {
-    if (firmwareChannel !== 'stable') return '最新版';
-    return `稳定版·${platformLabel()}`;
+    if (firmwareChannel === 'host') return 'host测试';
+    if (firmwareChannel === 'latest') return '最新版';
+    return '稳定版';
 }
 
 /**
- * 解析当前渠道 / 平台对应的固件下载地址、文件名与版本 hash。
- * 稳定版 host测试 平台是固定地址，既不查 hash 接口也不随渠道更新；
+ * 解析当前渠道对应的固件下载地址、文件名与版本 hash。
+ * host测试 是固定地址，既不查 hash 接口也不随渠道更新；
  * 其余情况先用 hash 接口取版本，再拼 CDN 地址。
  * @returns {Promise<{url: string, fileName: string, hash: string}>}
  */
 async function resolveFirmwareSource() {
-    if (firmwareChannel === 'stable' && firmwarePlatform === 'host') {
+    if (firmwareChannel === 'host') {
         return { url: FIRMWARE_HOST_TEST_URL, fileName: 'PIOKMbox.uf2', hash: '' };
     }
 
@@ -930,9 +938,9 @@ async function fetchFirmwareData() {
     // 2. 下载并解析
     const firmware = await downloadUf2(url, fileName, hash);
 
-    // 3. 稳定版安卓/iOS 附带获取版本号（仅日志展示用，失败不影响烧录；
-    //    host测试 是固定固件，版本号不适用）
-    if (firmwareChannel === 'stable' && firmwarePlatform !== 'host') {
+    // 3. 稳定版附带获取版本号（仅日志展示用，失败不影响烧录；
+    //    host测试 是固定固件、最新版没有版本号，均不适用）
+    if (firmwareChannel === 'stable') {
         firmware.version = await fetchFirmwareVersion();
     }
 
@@ -960,7 +968,7 @@ function buildUsageReport(firmware) {
     const report = {
         site: STATS_SITE,
         channel: firmwareChannel,
-        platform: firmwarePlatform,
+        platform: firmwareChannel === 'host' ? 'host' : 'android',
         firmwareVersion: (firmware && firmware.version) || '',
         firmwareHash: (firmware && firmware.hash) || '',
         target: null,
@@ -1334,6 +1342,10 @@ eraseBtn.addEventListener('click', async () => {
     await eraseFlash();
 });
 
+versionHostBtn.addEventListener('click', () => {
+    setFirmwareChannel('host');
+});
+
 versionStableBtn.addEventListener('click', () => {
     setFirmwareChannel('stable');
 });
@@ -1342,18 +1354,19 @@ versionLatestBtn.addEventListener('click', () => {
     setFirmwareChannel('latest');
 });
 
-platformAndroidBtn.addEventListener('click', () => {
-    setFirmwarePlatform('android');
-});
+// 平台选择已合并进版本渠道，监听一并注释
+// platformAndroidBtn.addEventListener('click', () => {
+//     setFirmwarePlatform('android');
+// });
 
 // iOS 渠道暂不可用，按钮已注释
 // platformIosBtn.addEventListener('click', () => {
 //     setFirmwarePlatform('ios');
 // });
 
-platformHostBtn.addEventListener('click', () => {
-    setFirmwarePlatform('host');
-});
+// platformHostBtn.addEventListener('click', () => {
+//     setFirmwarePlatform('host');
+// });
 
 downloadBtn.addEventListener('click', () => {
     downloadFirmwareFile();
