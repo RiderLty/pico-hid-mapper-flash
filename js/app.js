@@ -12,6 +12,7 @@ import { PicobootStatusCmd } from '../pkg/commands.js';
 import { uf2ToFlashBuffer } from './uf2/uf2.js';
 import {
     FIRMWARE_STABLE_HASH_URL,
+    FIRMWARE_STABLE_HASH_BOARD_URLS,
     FIRMWARE_STABLE_HASH_IOS_URL,
     FIRMWARE_LATEST_HASH_URL,
     FIRMWARE_STABLE_VERSION_URL,
@@ -50,7 +51,8 @@ import {
 /**
  * @typedef {Object} UsageReport
  * @property {string} site 站点标识
- * @property {'stable'|'latest'|'host'} channel 固件版本渠道
+ * @property {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'host'} channel 固件版本渠道（select 值，
+ *          格式 = 渠道[:板型]；「最新版」已随 CI 停写 latest-hash 移除）
  * @property {'android'|'host'} platform 目标平台（host测试 渠道为 'host'，其余记 'android'）
  * @property {string} firmwareVersion 稳定版版本号；最新版为 ''
  * @property {string} firmwareHash 最新版固件 hash；稳定版为 ''
@@ -78,7 +80,8 @@ let lastStatus = null;
 /** @type {boolean} 是否正在执行获取/烧录/重启等操作（防止重复点击） */
 let busy = false;
 
-/** @type {'stable'|'latest'|'host'} 当前固件版本渠道（host测试 作为独立渠道选项） */
+/** @type {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'host'} 当前固件版本（select 值，
+ *          格式 = 渠道[:板型]；host测试 作为独立选项） */
 let firmwareChannel = 'stable';
 // 平台选择已合并进版本渠道，不再单独维护
 // /** @type {'android'|'ios'|'host'} 目标平台（仅稳定版渠道可选；最新版是调试构建，固定安卓默认） */
@@ -136,10 +139,8 @@ const eraseBtn = /** @type {HTMLButtonElement} */ (document.getElementById('eras
 /** @type {HTMLElement} */
 const activityContent = document.getElementById('activityContent');
 
-// 固件版本切换（host测试 已并入版本渠道）
-const versionHostBtn = /** @type {HTMLButtonElement} */ (document.getElementById('versionHostBtn'));
-const versionStableBtn = /** @type {HTMLButtonElement} */ (document.getElementById('versionStableBtn'));
-const versionLatestBtn = /** @type {HTMLButtonElement} */ (document.getElementById('versionLatestBtn'));
+// 固件版本选择（select 下拉；host测试 已并入选项，value = 渠道[:板型]）
+const firmwareSelect = /** @type {HTMLSelectElement} */ (document.getElementById('firmwareSelect'));
 // 平台选择已合并进版本渠道，控件已注释
 // const platformSwitch = document.getElementById('platformSwitch');
 // const platformAndroidBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformAndroidBtn'));
@@ -681,16 +682,18 @@ async function rebootAndDisconnect() {
 //     }
 // }
 
-/** 更新当前固件说明文案（跟随版本渠道变化）。 */
+/** 更新当前固件说明文案（跟随版本选择变化）。 */
 function updateFirmwareHint() {
     if (!firmwareHint) return;
 
     if (firmwareChannel === 'host') {
         firmwareHint.textContent = '烧录键鼠透传固件，用于测试板子 host 口是否正常工作';
-    } else if (firmwareChannel === 'latest') {
-        firmwareHint.textContent = '最新版为调试构建，不区分目标平台：每次烧录前自动拉取最新构建';
+    } else if (firmwareChannel === 'stable:pico2w') {
+        firmwareHint.textContent = '将烧录 Pico 2 W 蓝牙变体固件（DS5 蓝牙直连，无 Host 口），每次烧录前自动检查更新';
+    } else if (firmwareChannel === 'stable:waveshare_pw') {
+        firmwareHint.textContent = '将烧录 Waveshare 无线板蓝牙变体固件（DS5 蓝牙直连，无 Host 口），每次烧录前自动检查更新';
     } else {
-        firmwareHint.textContent = '将烧录稳定版固件（固件自动适配设备平台），每次烧录前自动检查更新';
+        firmwareHint.textContent = '将烧录稳定版固件（默认板，固件自动适配设备平台），每次烧录前自动检查更新';
     }
 }
 
@@ -700,13 +703,18 @@ function updateFirmwareHint() {
 
 /**
  * 从 localStorage 读取上次选择的固件版本，默认稳定版。
- * @returns {'stable'|'latest'|'host'}
+ * 旧值兼容：'latest' 已随 CI 停写 latest-hash 移除，读到后迁移为 'stable'。
+ * @returns {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'host'}
  */
 function loadFirmwareChannel() {
     try {
         const saved = localStorage.getItem(FIRMWARE_CHANNEL_STORAGE_KEY);
-        if (saved === 'stable' || saved === 'latest' || saved === 'host') {
+        if (saved === 'stable' || saved === 'stable:pico2w' ||
+            saved === 'stable:waveshare_pw' || saved === 'host') {
             return saved;
+        }
+        if (saved === 'latest') {
+            return 'stable';   // 旧存储值迁移
         }
     } catch {
         // localStorage 不可用（隐私模式等），回退默认值
@@ -715,8 +723,8 @@ function loadFirmwareChannel() {
 }
 
 /**
- * 设置固件版本渠道，更新 UI 并持久化。
- * @param {'stable'|'latest'|'host'} channel
+ * 设置固件版本，更新 UI 并持久化。
+ * @param {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'host'} channel
  * @return {void}
  */
 function setFirmwareChannel(channel) {
@@ -733,21 +741,11 @@ function setFirmwareChannel(channel) {
 }
 
 /**
- * 更新版本切换按钮的激活态。
+ * 同步 select 控件的选中项。
  * @return {void}
  */
 function updateVersionUi() {
-    /** @type {Array<[string, HTMLButtonElement]>} */
-    const channels = [
-        ['host', versionHostBtn],
-        ['latest', versionLatestBtn],
-        ['stable', versionStableBtn],
-    ];
-    for (const [name, btn] of channels) {
-        const active = firmwareChannel === name;
-        btn.classList.toggle('is-active', active);
-        btn.setAttribute('aria-pressed', String(active));
-    }
+    if (firmwareSelect) firmwareSelect.value = firmwareChannel;
     updateFirmwareHint();
 }
 
@@ -766,22 +764,35 @@ function addCacheBuster(url) {
 }
 
 /**
- * 当前渠道的版本 hash 接口地址（host测试 渠道不走 hash 接口，见 resolveFirmwareSource()）。
- * 注：iOS 曾按平台分 KV key（-ios 后缀），平台合并进渠道后不再区分。
+ * 当前选择的版本 hash 接口地址（host测试 渠道不走 hash 接口，见 resolveFirmwareSource()）。
+ * 稳定版按板型分 KV key（-pico2w / -waveshare_pw 后缀，与 build.sh 的 KV_SUFFIX 一致）；
+ * 默认板沿用无后缀 key，与旧烧录页兼容。
+ * 注：iOS 曾按平台分 KV key（-ios 后缀），平台合并进渠道后不再区分；
+ *     latest-hash 已随 CI 停写，FIRMWARE_LATEST_HASH_URL 仅作未知值兜底。
  * @returns {string}
  */
 function getFirmwareHashUrl() {
-    if (firmwareChannel === 'stable') {
-        return FIRMWARE_STABLE_HASH_URL;
+    const sep = firmwareChannel.indexOf(':');
+    if (sep >= 0) {
+        const board = firmwareChannel.slice(sep + 1);
+        const url = FIRMWARE_STABLE_HASH_BOARD_URLS[board];
+        if (url) return url;
     }
-    return FIRMWARE_LATEST_HASH_URL;
+    if (firmwareChannel === 'host') {
+        // host测试 固定地址，正常不会走到这里（resolveFirmwareSource 已分流）
+        return FIRMWARE_LATEST_HASH_URL;
+    }
+    return FIRMWARE_STABLE_HASH_URL;
 }
 
-/** 渠道展示文案（日志用）。 */
+/** 版本展示文案（日志用）。 */
 function channelLabel() {
-    if (firmwareChannel === 'host') return 'host测试';
-    if (firmwareChannel === 'latest') return '最新版';
-    return '稳定版';
+    switch (firmwareChannel) {
+        case 'host': return 'host测试';
+        case 'stable:pico2w': return '稳定版 · Pico 2 W（蓝牙）';
+        case 'stable:waveshare_pw': return '稳定版 · Waveshare（蓝牙）';
+        default: return '稳定版';
+    }
 }
 
 /**
@@ -940,7 +951,7 @@ async function fetchFirmwareData() {
 
     // 3. 稳定版附带获取版本号（仅日志展示用，失败不影响烧录；
     //    host测试 是固定固件、最新版没有版本号，均不适用）
-    if (firmwareChannel === 'stable') {
+    if (firmwareChannel.startsWith('stable')) {
         firmware.version = await fetchFirmwareVersion();
     }
 
@@ -1342,16 +1353,8 @@ eraseBtn.addEventListener('click', async () => {
     await eraseFlash();
 });
 
-versionHostBtn.addEventListener('click', () => {
-    setFirmwareChannel('host');
-});
-
-versionStableBtn.addEventListener('click', () => {
-    setFirmwareChannel('stable');
-});
-
-versionLatestBtn.addEventListener('click', () => {
-    setFirmwareChannel('latest');
+firmwareSelect.addEventListener('change', () => {
+    setFirmwareChannel(firmwareSelect.value);
 });
 
 // 平台选择已合并进版本渠道，监听一并注释
