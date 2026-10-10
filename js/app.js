@@ -51,8 +51,8 @@ import {
 /**
  * @typedef {Object} UsageReport
  * @property {string} site 站点标识
- * @property {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'host'} channel 固件版本渠道（select 值，
- *          格式 = 渠道[:板型]；「最新版」已随 CI 停写 latest-hash 移除）
+ * @property {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'latest'|'host'} channel 固件版本（select 值，
+ *          格式 = 渠道[:板型]；最新版为默认板调试通道，蓝牙板仅稳定版）
  * @property {'android'|'host'} platform 目标平台（host测试 渠道为 'host'，其余记 'android'）
  * @property {string} firmwareVersion 稳定版版本号；最新版为 ''
  * @property {string} firmwareHash 最新版固件 hash；稳定版为 ''
@@ -80,7 +80,7 @@ let lastStatus = null;
 /** @type {boolean} 是否正在执行获取/烧录/重启等操作（防止重复点击） */
 let busy = false;
 
-/** @type {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'host'} 当前固件版本（select 值，
+/** @type {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'latest'|'host'} 当前固件版本（select 值，
  *          格式 = 渠道[:板型]；host测试 作为独立选项） */
 let firmwareChannel = 'stable';
 // 平台选择已合并进版本渠道，不再单独维护
@@ -692,6 +692,8 @@ function updateFirmwareHint() {
         firmwareHint.textContent = '将烧录 Pico 2 W 蓝牙变体固件（DS5 蓝牙直连，无 Host 口），每次烧录前自动检查更新';
     } else if (firmwareChannel === 'stable:waveshare_pw') {
         firmwareHint.textContent = '将烧录 Waveshare 无线板蓝牙变体固件（DS5 蓝牙直连，无 Host 口），每次烧录前自动检查更新';
+    } else if (firmwareChannel === 'latest') {
+        firmwareHint.textContent = '最新版为默认板调试构建：每次烧录前自动拉取最新构建';
     } else {
         firmwareHint.textContent = '将烧录稳定版固件（默认板，固件自动适配设备平台），每次烧录前自动检查更新';
     }
@@ -703,18 +705,15 @@ function updateFirmwareHint() {
 
 /**
  * 从 localStorage 读取上次选择的固件版本，默认稳定版。
- * 旧值兼容：'latest' 已随 CI 停写 latest-hash 移除，读到后迁移为 'stable'。
- * @returns {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'host'}
+ * 旧值兼容：均合法（'latest' 为默认板调试通道，仍由 CI 维护 latest-hash）。
+ * @returns {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'latest'|'host'}
  */
 function loadFirmwareChannel() {
     try {
         const saved = localStorage.getItem(FIRMWARE_CHANNEL_STORAGE_KEY);
         if (saved === 'stable' || saved === 'stable:pico2w' ||
-            saved === 'stable:waveshare_pw' || saved === 'host') {
+            saved === 'stable:waveshare_pw' || saved === 'latest' || saved === 'host') {
             return saved;
-        }
-        if (saved === 'latest') {
-            return 'stable';   // 旧存储值迁移
         }
     } catch {
         // localStorage 不可用（隐私模式等），回退默认值
@@ -724,7 +723,7 @@ function loadFirmwareChannel() {
 
 /**
  * 设置固件版本，更新 UI 并持久化。
- * @param {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'host'} channel
+ * @param {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'latest'|'host'} channel
  * @return {void}
  */
 function setFirmwareChannel(channel) {
@@ -766,21 +765,19 @@ function addCacheBuster(url) {
 /**
  * 当前选择的版本 hash 接口地址（host测试 渠道不走 hash 接口，见 resolveFirmwareSource()）。
  * 稳定版按板型分 KV key（-pico2w / -waveshare_pw 后缀，与 build.sh 的 KV_SUFFIX 一致）；
- * 默认板沿用无后缀 key，与旧烧录页兼容。
- * 注：iOS 曾按平台分 KV key（-ios 后缀），平台合并进渠道后不再区分；
- *     latest-hash 已随 CI 停写，FIRMWARE_LATEST_HASH_URL 仅作未知值兜底。
+ * 默认板稳定版沿用无后缀 key，与旧烧录页兼容；最新版（默认板调试通道）走 latest-hash。
+ * 注：iOS 曾按平台分 KV key（-ios 后缀），平台合并进渠道后不再区分。
  * @returns {string}
  */
 function getFirmwareHashUrl() {
+    if (firmwareChannel === 'latest') {
+        return FIRMWARE_LATEST_HASH_URL;
+    }
     const sep = firmwareChannel.indexOf(':');
     if (sep >= 0) {
         const board = firmwareChannel.slice(sep + 1);
         const url = FIRMWARE_STABLE_HASH_BOARD_URLS[board];
         if (url) return url;
-    }
-    if (firmwareChannel === 'host') {
-        // host测试 固定地址，正常不会走到这里（resolveFirmwareSource 已分流）
-        return FIRMWARE_LATEST_HASH_URL;
     }
     return FIRMWARE_STABLE_HASH_URL;
 }
@@ -789,6 +786,7 @@ function getFirmwareHashUrl() {
 function channelLabel() {
     switch (firmwareChannel) {
         case 'host': return 'host测试';
+        case 'latest': return '最新版';
         case 'stable:pico2w': return '稳定版 · Pico 2 W（蓝牙）';
         case 'stable:waveshare_pw': return '稳定版 · Waveshare（蓝牙）';
         default: return '稳定版';

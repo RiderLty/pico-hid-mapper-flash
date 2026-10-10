@@ -277,31 +277,46 @@ body {
 /* 固件版本切换 */
 /* 版本选择下拉（2026-10-11 起取代 version-switch 按钮组，支持板型变体选项） */
 .version-select {
-    padding: 8px 34px 8px 14px;
+    appearance: none;
+    -webkit-appearance: none;
+    min-width: 200px;
+    padding: 8px 40px 8px 18px;
     border: 1px solid var(--color-border);
-    border-radius: 8px;
-    background-color: var(--color-bg);
+    border-radius: 999px;
+    background-color: var(--color-bg-card);
     color: var(--color-text-primary);
     font-family: var(--font-sans);
     font-size: 0.9rem;
     font-weight: 600;
+    line-height: 1.4;
     cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%239aa7b4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 12px center;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    background-position: right 16px center;
 }
 
 .version-select:hover {
-    border-color: var(--color-text-secondary);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%2306b6d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    box-shadow: 0 2px 10px rgba(6, 182, 212, 0.18);
 }
 
 .version-select:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.25);
+    color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2);
+}
+
+/* 展开列表的底色（Chromium/新版 Firefox 生效；Safari 忽略也无碍） */
+.version-select option {
+    background-color: var(--color-bg-card);
+    color: var(--color-text-primary);
+    font-weight: 500;
+    padding: 6px 10px;
 }
 
 .version-switch {
@@ -598,11 +613,12 @@ body {
                     </div>
                     -->
                     <!-- 版本选择：select 下拉（value = 渠道[:板型]）。
-                         「最新版」已随 CI 停写 latest-hash 一并移除（2026-10-11）。 -->
+                         最新版为默认板调试通道（CI 只写默认板 latest-hash）；蓝牙板仅稳定版。 -->
                     <select id="firmwareSelect" class="version-select" aria-label="选择固件版本">
                         <option value="stable">稳定版</option>
                         <option value="stable:pico2w">稳定版 · Pico 2 W（蓝牙）</option>
                         <option value="stable:waveshare_pw">稳定版 · Waveshare（蓝牙）</option>
+                        <option value="latest">最新版</option>
                         <option value="host">host测试</option>
                     </select>
                 </div>
@@ -2471,8 +2487,8 @@ const STATS_SITE = 'picoflash.org';
 /**
  * @typedef {Object} UsageReport
  * @property {string} site 站点标识
- * @property {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'host'} channel 固件版本渠道（select 值，
- *          格式 = 渠道[:板型]；「最新版」已随 CI 停写 latest-hash 移除）
+ * @property {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'latest'|'host'} channel 固件版本（select 值，
+ *          格式 = 渠道[:板型]；最新版为默认板调试通道，蓝牙板仅稳定版）
  * @property {'android'|'host'} platform 目标平台（host测试 渠道为 'host'，其余记 'android'）
  * @property {string} firmwareVersion 稳定版版本号；最新版为 ''
  * @property {string} firmwareHash 最新版固件 hash；稳定版为 ''
@@ -2500,7 +2516,7 @@ let lastStatus = null;
 /** @type {boolean} 是否正在执行获取/烧录/重启等操作（防止重复点击） */
 let busy = false;
 
-/** @type {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'host'} 当前固件版本（select 值，
+/** @type {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'latest'|'host'} 当前固件版本（select 值，
  *          格式 = 渠道[:板型]；host测试 作为独立选项） */
 let firmwareChannel = 'stable';
 // 平台选择已合并进版本渠道，不再单独维护
@@ -3112,6 +3128,8 @@ function updateFirmwareHint() {
         firmwareHint.textContent = '将烧录 Pico 2 W 蓝牙变体固件（DS5 蓝牙直连，无 Host 口），每次烧录前自动检查更新';
     } else if (firmwareChannel === 'stable:waveshare_pw') {
         firmwareHint.textContent = '将烧录 Waveshare 无线板蓝牙变体固件（DS5 蓝牙直连，无 Host 口），每次烧录前自动检查更新';
+    } else if (firmwareChannel === 'latest') {
+        firmwareHint.textContent = '最新版为默认板调试构建：每次烧录前自动拉取最新构建';
     } else {
         firmwareHint.textContent = '将烧录稳定版固件（默认板，固件自动适配设备平台），每次烧录前自动检查更新';
     }
@@ -3123,18 +3141,15 @@ function updateFirmwareHint() {
 
 /**
  * 从 localStorage 读取上次选择的固件版本，默认稳定版。
- * 旧值兼容：'latest' 已随 CI 停写 latest-hash 移除，读到后迁移为 'stable'。
- * @returns {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'host'}
+ * 旧值兼容：均合法（'latest' 为默认板调试通道，仍由 CI 维护 latest-hash）。
+ * @returns {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'latest'|'host'}
  */
 function loadFirmwareChannel() {
     try {
         const saved = localStorage.getItem(FIRMWARE_CHANNEL_STORAGE_KEY);
         if (saved === 'stable' || saved === 'stable:pico2w' ||
-            saved === 'stable:waveshare_pw' || saved === 'host') {
+            saved === 'stable:waveshare_pw' || saved === 'latest' || saved === 'host') {
             return saved;
-        }
-        if (saved === 'latest') {
-            return 'stable';   // 旧存储值迁移
         }
     } catch {
         // localStorage 不可用（隐私模式等），回退默认值
@@ -3144,7 +3159,7 @@ function loadFirmwareChannel() {
 
 /**
  * 设置固件版本，更新 UI 并持久化。
- * @param {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'host'} channel
+ * @param {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'latest'|'host'} channel
  * @return {void}
  */
 function setFirmwareChannel(channel) {
@@ -3186,21 +3201,19 @@ function addCacheBuster(url) {
 /**
  * 当前选择的版本 hash 接口地址（host测试 渠道不走 hash 接口，见 resolveFirmwareSource()）。
  * 稳定版按板型分 KV key（-pico2w / -waveshare_pw 后缀，与 build.sh 的 KV_SUFFIX 一致）；
- * 默认板沿用无后缀 key，与旧烧录页兼容。
- * 注：iOS 曾按平台分 KV key（-ios 后缀），平台合并进渠道后不再区分；
- *     latest-hash 已随 CI 停写，FIRMWARE_LATEST_HASH_URL 仅作未知值兜底。
+ * 默认板稳定版沿用无后缀 key，与旧烧录页兼容；最新版（默认板调试通道）走 latest-hash。
+ * 注：iOS 曾按平台分 KV key（-ios 后缀），平台合并进渠道后不再区分。
  * @returns {string}
  */
 function getFirmwareHashUrl() {
+    if (firmwareChannel === 'latest') {
+        return FIRMWARE_LATEST_HASH_URL;
+    }
     const sep = firmwareChannel.indexOf(':');
     if (sep >= 0) {
         const board = firmwareChannel.slice(sep + 1);
         const url = FIRMWARE_STABLE_HASH_BOARD_URLS[board];
         if (url) return url;
-    }
-    if (firmwareChannel === 'host') {
-        // host测试 固定地址，正常不会走到这里（resolveFirmwareSource 已分流）
-        return FIRMWARE_LATEST_HASH_URL;
     }
     return FIRMWARE_STABLE_HASH_URL;
 }
@@ -3209,6 +3222,7 @@ function getFirmwareHashUrl() {
 function channelLabel() {
     switch (firmwareChannel) {
         case 'host': return 'host测试';
+        case 'latest': return '最新版';
         case 'stable:pico2w': return '稳定版 · Pico 2 W（蓝牙）';
         case 'stable:waveshare_pw': return '稳定版 · Waveshare（蓝牙）';
         default: return '稳定版';

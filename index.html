@@ -51,11 +51,12 @@
                     </div>
                     -->
                     <!-- 版本选择：select 下拉（value = 渠道[:板型]）。
-                         「最新版」已随 CI 停写 latest-hash 一并移除（2026-10-11）。 -->
+                         最新版为默认板调试通道（CI 只写默认板 latest-hash）；蓝牙板仅稳定版。 -->
                     <select id="firmwareSelect" class="version-select" aria-label="选择固件版本">
                         <option value="stable">稳定版</option>
                         <option value="stable:pico2w">稳定版 · Pico 2 W（蓝牙）</option>
                         <option value="stable:waveshare_pw">稳定版 · Waveshare（蓝牙）</option>
+                        <option value="latest">最新版</option>
                         <option value="host">host测试</option>
                     </select>
                 </div>
