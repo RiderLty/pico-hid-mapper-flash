@@ -50,15 +50,26 @@
                         <button id="platformHostBtn" class="version-option" type="button" data-platform="host" aria-pressed="false">host测试</button>
                     </div>
                     -->
-                    <!-- 版本选择：select 下拉（value = 渠道[:板型]）。
-                         最新版为默认板调试通道（CI 只写默认板 latest-hash）；蓝牙板仅稳定版。 -->
-                    <select id="firmwareSelect" class="version-select" aria-label="选择固件版本">
-                        <option value="stable">稳定版</option>
-                        <option value="stable:pico2w">稳定版 · Pico 2 W（蓝牙）</option>
-                        <option value="stable:waveshare_pw">稳定版 · Waveshare（蓝牙）</option>
-                        <option value="latest">最新版</option>
-                        <option value="host">host测试</option>
-                    </select>
+                    <!-- 版本选择：自绘下拉（2026-10-11 起取代 version-select）。
+                         value = 渠道[:板型]；最新版为默认板调试通道；蓝牙板仅稳定版。 -->
+                    <div class="version-dropdown">
+                        <button id="firmwareTrigger" class="version-trigger" type="button"
+                                aria-haspopup="listbox" aria-expanded="false">
+                            <span class="version-dot dot-success" id="firmwareTriggerDot"></span>
+                            <span id="firmwareTriggerLabel">稳定版</span>
+                            <svg class="version-caret" width="12" height="8" viewBox="0 0 12 8" aria-hidden="true">
+                                <path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor"
+                                      stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <div id="firmwareMenu" class="version-menu" role="listbox" aria-label="选择固件版本" hidden>
+                            <button type="button" class="version-item is-active" role="option" data-value="stable" aria-selected="true"><span class="version-dot dot-success"></span>稳定版</button>
+                            <button type="button" class="version-item" role="option" data-value="stable:pico2w" aria-selected="false"><span class="version-dot dot-success"></span>稳定版 · Pico 2 W（蓝牙）</button>
+                            <button type="button" class="version-item" role="option" data-value="stable:waveshare_pw" aria-selected="false"><span class="version-dot dot-success"></span>稳定版 · Waveshare（蓝牙）</button>
+                            <button type="button" class="version-item" role="option" data-value="latest" aria-selected="false"><span class="version-dot dot-latest"></span>最新版</button>
+                            <button type="button" class="version-item" role="option" data-value="host" aria-selected="false"><span class="version-dot dot-accent"></span>host测试</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 

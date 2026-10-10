@@ -275,12 +275,18 @@ body {
 }
 
 /* 固件版本切换 */
-/* 版本选择下拉（2026-10-11 起取代 version-switch 按钮组，支持板型变体选项） */
-.version-select {
-    appearance: none;
-    -webkit-appearance: none;
-    min-width: 200px;
-    padding: 8px 40px 8px 18px;
+/* 版本选择自绘下拉（2026-10-11 起取代 version-switch 按钮组，支持板型变体选项）。
+   视觉沿用旧按钮组的胶囊语言：状态圆点（绿=稳定 橙=最新版 青=host测试）+ 选中项反色。 */
+.version-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.version-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 15px;
     border: 1px solid var(--color-border);
     border-radius: 999px;
     background-color: var(--color-bg-card);
@@ -291,32 +297,106 @@ body {
     line-height: 1.4;
     cursor: pointer;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%239aa7b4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 16px center;
+    transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.version-select:hover {
-    border-color: var(--color-accent);
-    color: var(--color-accent);
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%2306b6d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    box-shadow: 0 2px 10px rgba(6, 182, 212, 0.18);
-}
-
-.version-select:focus {
+.version-trigger:hover,
+.version-trigger:focus-visible {
     outline: none;
     border-color: var(--color-accent);
     color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2);
+    box-shadow: 0 2px 10px rgba(6, 182, 212, 0.18);
 }
 
-/* 展开列表的底色（Chromium/新版 Firefox 生效；Safari 忽略也无碍） */
-.version-select option {
+.version-caret {
+    flex: none;
+    transition: transform 0.15s ease;
+}
+
+.version-trigger[aria-expanded='true'] .version-caret {
+    transform: rotate(180deg);
+}
+
+.version-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.dot-success {
+    background-color: var(--color-success);
+}
+
+.dot-latest {
+    background-color: var(--color-latest);
+}
+
+.dot-accent {
+    background-color: var(--color-accent);
+}
+
+.version-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 50;
+    min-width: min(280px, 78vw);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px;
     background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.version-menu:not([hidden]) {
+    animation: version-menu-in 0.13s ease;
+}
+
+@keyframes version-menu-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.version-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 13px;
+    border: none;
+    border-radius: 9px;
+    background-color: transparent;
+    color: var(--color-text-secondary);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.version-item:hover {
+    background-color: var(--color-bg);
     color: var(--color-text-primary);
-    font-weight: 500;
-    padding: 6px 10px;
+}
+
+.version-item.is-active {
+    background-color: var(--color-accent);
+    color: #ffffff;
+}
+
+.version-item.is-active .version-dot {
+    background-color: #ffffff;
 }
 
 .version-switch {
@@ -612,15 +692,26 @@ body {
                         <button id="platformHostBtn" class="version-option" type="button" data-platform="host" aria-pressed="false">host测试</button>
                     </div>
                     -->
-                    <!-- 版本选择：select 下拉（value = 渠道[:板型]）。
-                         最新版为默认板调试通道（CI 只写默认板 latest-hash）；蓝牙板仅稳定版。 -->
-                    <select id="firmwareSelect" class="version-select" aria-label="选择固件版本">
-                        <option value="stable">稳定版</option>
-                        <option value="stable:pico2w">稳定版 · Pico 2 W（蓝牙）</option>
-                        <option value="stable:waveshare_pw">稳定版 · Waveshare（蓝牙）</option>
-                        <option value="latest">最新版</option>
-                        <option value="host">host测试</option>
-                    </select>
+                    <!-- 版本选择：自绘下拉（2026-10-11 起取代 version-select）。
+                         value = 渠道[:板型]；最新版为默认板调试通道；蓝牙板仅稳定版。 -->
+                    <div class="version-dropdown">
+                        <button id="firmwareTrigger" class="version-trigger" type="button"
+                                aria-haspopup="listbox" aria-expanded="false">
+                            <span class="version-dot dot-success" id="firmwareTriggerDot"></span>
+                            <span id="firmwareTriggerLabel">稳定版</span>
+                            <svg class="version-caret" width="12" height="8" viewBox="0 0 12 8" aria-hidden="true">
+                                <path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor"
+                                      stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <div id="firmwareMenu" class="version-menu" role="listbox" aria-label="选择固件版本" hidden>
+                            <button type="button" class="version-item is-active" role="option" data-value="stable" aria-selected="true"><span class="version-dot dot-success"></span>稳定版</button>
+                            <button type="button" class="version-item" role="option" data-value="stable:pico2w" aria-selected="false"><span class="version-dot dot-success"></span>稳定版 · Pico 2 W（蓝牙）</button>
+                            <button type="button" class="version-item" role="option" data-value="stable:waveshare_pw" aria-selected="false"><span class="version-dot dot-success"></span>稳定版 · Waveshare（蓝牙）</button>
+                            <button type="button" class="version-item" role="option" data-value="latest" aria-selected="false"><span class="version-dot dot-latest"></span>最新版</button>
+                            <button type="button" class="version-item" role="option" data-value="host" aria-selected="false"><span class="version-dot dot-accent"></span>host测试</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -2575,8 +2666,19 @@ const eraseBtn = /** @type {HTMLButtonElement} */ (document.getElementById('eras
 /** @type {HTMLElement} */
 const activityContent = document.getElementById('activityContent');
 
-// 固件版本选择（select 下拉；host测试 已并入选项，value = 渠道[:板型]）
-const firmwareSelect = /** @type {HTMLSelectElement} */ (document.getElementById('firmwareSelect'));
+// 固件版本选择（自绘下拉；host测试 已并入选项，value = 渠道[:板型]）
+const firmwareTrigger = /** @type {HTMLButtonElement} */ (document.getElementById('firmwareTrigger'));
+const firmwareTriggerLabel = document.getElementById('firmwareTriggerLabel');
+const firmwareTriggerDot = document.getElementById('firmwareTriggerDot');
+const firmwareMenu = document.getElementById('firmwareMenu');
+/** 版本值 → 触发器圆点配色类（与 version-item 内的圆点一致） */
+const CHANNEL_DOT_CLASS = {
+    stable: 'dot-success',
+    'stable:pico2w': 'dot-success',
+    'stable:waveshare_pw': 'dot-success',
+    latest: 'dot-latest',
+    host: 'dot-accent',
+};
 // 平台选择已合并进版本渠道，控件已注释
 // const platformSwitch = document.getElementById('platformSwitch');
 // const platformAndroidBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformAndroidBtn'));
@@ -3176,12 +3278,33 @@ function setFirmwareChannel(channel) {
 }
 
 /**
- * 同步 select 控件的选中项。
+ * 同步下拉触发器（圆点/文案）与菜单项选中态。
  * @return {void}
  */
 function updateVersionUi() {
-    if (firmwareSelect) firmwareSelect.value = firmwareChannel;
+    if (firmwareTriggerLabel) firmwareTriggerLabel.textContent = channelLabel();
+    if (firmwareTriggerDot) {
+        firmwareTriggerDot.className = `version-dot ${CHANNEL_DOT_CLASS[firmwareChannel] || 'dot-success'}`;
+    }
+    if (firmwareMenu) {
+        for (const item of firmwareMenu.querySelectorAll('.version-item')) {
+            const active = item.dataset.value === firmwareChannel;
+            item.classList.toggle('is-active', active);
+            item.setAttribute('aria-selected', String(active));
+        }
+    }
     updateFirmwareHint();
+}
+
+/** 展开收起版本菜单。 */
+function setVersionMenuOpen(open) {
+    if (!firmwareMenu || !firmwareTrigger) return;
+    firmwareMenu.hidden = !open;
+    firmwareTrigger.setAttribute('aria-expanded', String(open));
+}
+
+function isVersionMenuOpen() {
+    return !!firmwareMenu && !firmwareMenu.hidden;
 }
 
 //
@@ -3787,8 +3910,29 @@ eraseBtn.addEventListener('click', async () => {
     await eraseFlash();
 });
 
-firmwareSelect.addEventListener('change', () => {
-    setFirmwareChannel(firmwareSelect.value);
+firmwareTrigger.addEventListener('click', () => {
+    setVersionMenuOpen(!isVersionMenuOpen());
+});
+
+firmwareMenu.addEventListener('click', (e) => {
+    const item = /** @type {HTMLElement|null} */ ((e.target instanceof Element) ? e.target.closest('.version-item') : null);
+    if (!item) return;
+    setFirmwareChannel(item.dataset.value || 'stable');
+    setVersionMenuOpen(false);
+});
+
+// 点外部 / Esc 收起菜单（触发器自身的 click 由上面分支处理）
+document.addEventListener('click', (e) => {
+    if (!isVersionMenuOpen()) return;
+    if (e.target instanceof Element && e.target.closest('.version-dropdown')) return;
+    setVersionMenuOpen(false);
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isVersionMenuOpen()) {
+        setVersionMenuOpen(false);
+        e.stopPropagation();
+    }
 });
 
 // 平台选择已合并进版本渠道，监听一并注释

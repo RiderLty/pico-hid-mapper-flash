@@ -268,12 +268,18 @@ body {
 }
 
 /* 固件版本切换 */
-/* 版本选择下拉（2026-10-11 起取代 version-switch 按钮组，支持板型变体选项） */
-.version-select {
-    appearance: none;
-    -webkit-appearance: none;
-    min-width: 200px;
-    padding: 8px 40px 8px 18px;
+/* 版本选择自绘下拉（2026-10-11 起取代 version-switch 按钮组，支持板型变体选项）。
+   视觉沿用旧按钮组的胶囊语言：状态圆点（绿=稳定 橙=最新版 青=host测试）+ 选中项反色。 */
+.version-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.version-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 15px;
     border: 1px solid var(--color-border);
     border-radius: 999px;
     background-color: var(--color-bg-card);
@@ -284,32 +290,106 @@ body {
     line-height: 1.4;
     cursor: pointer;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%239aa7b4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 16px center;
+    transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.version-select:hover {
-    border-color: var(--color-accent);
-    color: var(--color-accent);
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%2306b6d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    box-shadow: 0 2px 10px rgba(6, 182, 212, 0.18);
-}
-
-.version-select:focus {
+.version-trigger:hover,
+.version-trigger:focus-visible {
     outline: none;
     border-color: var(--color-accent);
     color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2);
+    box-shadow: 0 2px 10px rgba(6, 182, 212, 0.18);
 }
 
-/* 展开列表的底色（Chromium/新版 Firefox 生效；Safari 忽略也无碍） */
-.version-select option {
+.version-caret {
+    flex: none;
+    transition: transform 0.15s ease;
+}
+
+.version-trigger[aria-expanded='true'] .version-caret {
+    transform: rotate(180deg);
+}
+
+.version-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.dot-success {
+    background-color: var(--color-success);
+}
+
+.dot-latest {
+    background-color: var(--color-latest);
+}
+
+.dot-accent {
+    background-color: var(--color-accent);
+}
+
+.version-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 50;
+    min-width: min(280px, 78vw);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px;
     background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.version-menu:not([hidden]) {
+    animation: version-menu-in 0.13s ease;
+}
+
+@keyframes version-menu-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.version-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 13px;
+    border: none;
+    border-radius: 9px;
+    background-color: transparent;
+    color: var(--color-text-secondary);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.version-item:hover {
+    background-color: var(--color-bg);
     color: var(--color-text-primary);
-    font-weight: 500;
-    padding: 6px 10px;
+}
+
+.version-item.is-active {
+    background-color: var(--color-accent);
+    color: #ffffff;
+}
+
+.version-item.is-active .version-dot {
+    background-color: #ffffff;
 }
 
 .version-switch {

@@ -139,8 +139,19 @@ const eraseBtn = /** @type {HTMLButtonElement} */ (document.getElementById('eras
 /** @type {HTMLElement} */
 const activityContent = document.getElementById('activityContent');
 
-// 固件版本选择（select 下拉；host测试 已并入选项，value = 渠道[:板型]）
-const firmwareSelect = /** @type {HTMLSelectElement} */ (document.getElementById('firmwareSelect'));
+// 固件版本选择（自绘下拉；host测试 已并入选项，value = 渠道[:板型]）
+const firmwareTrigger = /** @type {HTMLButtonElement} */ (document.getElementById('firmwareTrigger'));
+const firmwareTriggerLabel = document.getElementById('firmwareTriggerLabel');
+const firmwareTriggerDot = document.getElementById('firmwareTriggerDot');
+const firmwareMenu = document.getElementById('firmwareMenu');
+/** 版本值 → 触发器圆点配色类（与 version-item 内的圆点一致） */
+const CHANNEL_DOT_CLASS = {
+    stable: 'dot-success',
+    'stable:pico2w': 'dot-success',
+    'stable:waveshare_pw': 'dot-success',
+    latest: 'dot-latest',
+    host: 'dot-accent',
+};
 // 平台选择已合并进版本渠道，控件已注释
 // const platformSwitch = document.getElementById('platformSwitch');
 // const platformAndroidBtn = /** @type {HTMLButtonElement} */ (document.getElementById('platformAndroidBtn'));
@@ -740,12 +751,33 @@ function setFirmwareChannel(channel) {
 }
 
 /**
- * 同步 select 控件的选中项。
+ * 同步下拉触发器（圆点/文案）与菜单项选中态。
  * @return {void}
  */
 function updateVersionUi() {
-    if (firmwareSelect) firmwareSelect.value = firmwareChannel;
+    if (firmwareTriggerLabel) firmwareTriggerLabel.textContent = channelLabel();
+    if (firmwareTriggerDot) {
+        firmwareTriggerDot.className = `version-dot ${CHANNEL_DOT_CLASS[firmwareChannel] || 'dot-success'}`;
+    }
+    if (firmwareMenu) {
+        for (const item of firmwareMenu.querySelectorAll('.version-item')) {
+            const active = item.dataset.value === firmwareChannel;
+            item.classList.toggle('is-active', active);
+            item.setAttribute('aria-selected', String(active));
+        }
+    }
     updateFirmwareHint();
+}
+
+/** 展开收起版本菜单。 */
+function setVersionMenuOpen(open) {
+    if (!firmwareMenu || !firmwareTrigger) return;
+    firmwareMenu.hidden = !open;
+    firmwareTrigger.setAttribute('aria-expanded', String(open));
+}
+
+function isVersionMenuOpen() {
+    return !!firmwareMenu && !firmwareMenu.hidden;
 }
 
 //
@@ -1351,8 +1383,29 @@ eraseBtn.addEventListener('click', async () => {
     await eraseFlash();
 });
 
-firmwareSelect.addEventListener('change', () => {
-    setFirmwareChannel(firmwareSelect.value);
+firmwareTrigger.addEventListener('click', () => {
+    setVersionMenuOpen(!isVersionMenuOpen());
+});
+
+firmwareMenu.addEventListener('click', (e) => {
+    const item = /** @type {HTMLElement|null} */ ((e.target instanceof Element) ? e.target.closest('.version-item') : null);
+    if (!item) return;
+    setFirmwareChannel(item.dataset.value || 'stable');
+    setVersionMenuOpen(false);
+});
+
+// 点外部 / Esc 收起菜单（触发器自身的 click 由上面分支处理）
+document.addEventListener('click', (e) => {
+    if (!isVersionMenuOpen()) return;
+    if (e.target instanceof Element && e.target.closest('.version-dropdown')) return;
+    setVersionMenuOpen(false);
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isVersionMenuOpen()) {
+        setVersionMenuOpen(false);
+        e.stopPropagation();
+    }
 });
 
 // 平台选择已合并进版本渠道，监听一并注释
