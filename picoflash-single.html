@@ -352,6 +352,12 @@ body {
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
+/* display:flex 会盖掉 hidden 属性的 UA 默认 display:none（本仓库 .btn/.modal-overlay
+   同款先例），必须显式补回，否则菜单收不起来 */
+.version-menu[hidden] {
+    display: none;
+}
+
 .version-menu:not([hidden]) {
     animation: version-menu-in 0.13s ease;
 }
