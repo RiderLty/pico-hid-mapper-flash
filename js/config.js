@@ -28,8 +28,14 @@ export const FIRMWARE_LATEST_HASH_URL = 'https://kvstore.rd5isto.org/api/kv/pico
 /** @type {string} 稳定版固件版本号 KV 接口地址（KV key 沿用 pico-hid-mapper-latest-version） */
 export const FIRMWARE_STABLE_VERSION_URL = 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-latest-version';
 
-/** @type {string} 固件 CDN 前缀，拼接 hash 与后缀得到完整下载地址 */
-export const FIRMWARE_CDN_PREFIX = 'https://1833788059.cdn.123clouddisk.com/1833788059/direct/projects/pico-hid-mapper/pico-hid-mapper-';
+/** @type {string[]} 固件 CDN 前缀列表：拿到 hash 后同时向所有源发起请求，
+ * 取最先完整成功的那一份（见 app.js 的 fetchFastest），全部失败才报错。
+ * 目前两个源：123 云盘 WebDAV CDN（老源）、Cloudflare R2 自定义域（新源），
+ * 两个源都按 build.sh 约定存放 pico-hid-mapper-<SHA256>.uf2 */
+export const FIRMWARE_CDN_PREFIXES = [
+    'https://1833788059.cdn.123clouddisk.com/1833788059/direct/projects/pico-hid-mapper/pico-hid-mapper-',
+    'https://storage.rd5isto.org/pico-hid-mapper/pico-hid-mapper-',
+];
 
 /** @type {string} 固件文件后缀 */
 export const FIRMWARE_CDN_SUFFIX = '.uf2';

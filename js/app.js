@@ -17,7 +17,7 @@ import {
     FIRMWARE_LATEST_HASH_URL,
     FIRMWARE_STABLE_VERSION_URL,
     FIRMWARE_HOST_TEST_URL,
-    FIRMWARE_CDN_PREFIX,
+    FIRMWARE_CDN_PREFIXES,
     FIRMWARE_CDN_SUFFIX,
     FIRMWARE_BOOM_URL,
     FETCH_TIMEOUT,
@@ -828,12 +828,12 @@ function channelLabel() {
 /**
  * 解析当前渠道对应的固件下载地址、文件名与版本 hash。
  * host测试 是固定地址，既不查 hash 接口也不随渠道更新；
- * 其余情况先用 hash 接口取版本，再拼 CDN 地址。
- * @returns {Promise<{url: string, fileName: string, hash: string}>}
+ * 其余情况先用 hash 接口取版本，再拼出**所有 CDN 源**的下载地址（多源竞速，见 fetchFastest）。
+ * @returns {Promise<{urls: string[], fileName: string, hash: string}>}
  */
 async function resolveFirmwareSource() {
     if (firmwareChannel === 'host') {
-        return { url: FIRMWARE_HOST_TEST_URL, fileName: 'PIOKMbox.uf2', hash: '' };
+        return { urls: [FIRMWARE_HOST_TEST_URL], fileName: 'PIOKMbox.uf2', hash: '' };
     }
 
     const hashUrl = addCacheBuster(getFirmwareHashUrl());
@@ -852,10 +852,66 @@ async function resolveFirmwareSource() {
     }
 
     return {
-        url: `${FIRMWARE_CDN_PREFIX}${hash}${FIRMWARE_CDN_SUFFIX}`,
+        urls: FIRMWARE_CDN_PREFIXES.map(prefix => `${prefix}${hash}${FIRMWARE_CDN_SUFFIX}`),
         fileName: `pico-hid-mapper-${hash}.uf2`,
         hash,
     };
+}
+
+/**
+ * 从 URL 里取展示用的源标签（主机名），日志里区分固件来自哪个 CDN。
+ * @param {string} url
+ * @returns {string}
+ */
+function cdnLabel(url) {
+    try {
+        return new URL(url).host;
+    } catch {
+        return url;
+    }
+}
+
+/**
+ * 多源竞速下载：同时向所有候选地址发起请求，**最先完整成功的那份胜出**，
+ * 其余立即 abort（省流量、不占连接）；全部失败才抛错，错误信息聚合各源原因。
+ * 每个请求都带新的缓存规避参数，并挂各自的 AbortController——超时 / 落败都能真正取消底层请求。
+ * @param {string[]} urls 候选下载地址列表
+ * @param {string} operation 超时提示里的操作名（如「获取固件」）
+ * @returns {Promise<{url: string, buf: ArrayBuffer}>}
+ */
+async function fetchFastest(urls, operation) {
+    const controllers = urls.map(() => new AbortController());
+    const attempts = urls.map(async (url, i) => {
+        const res = await withTimeout(
+            async () => fetch(addCacheBuster(url), { cache: 'no-store', signal: controllers[i].signal }),
+            FETCH_TIMEOUT,
+            operation
+        );
+        if (!res.ok) {
+            throw new Error(`${cdnLabel(url)}: HTTP ${res.status} ${res.statusText}`);
+        }
+        const buf = await res.arrayBuffer();
+        if (buf.byteLength === 0) {
+            throw new Error(`${cdnLabel(url)}: 空响应`);
+        }
+        return { url, buf };
+    });
+
+    try {
+        const winner = await Promise.any(attempts);
+        // 输家立刻中止；注意不能中止自己（虽是同一对象，abort 了也不影响已完成的响应，但仍显式排除）
+        controllers.forEach((controller, i) => {
+            if (urls[i] !== winner.url) controller.abort();
+        });
+        logActivity(`固件来自 ${cdnLabel(winner.url)}`, 'info');
+        return winner;
+    } catch (err) {
+        if (err instanceof AggregateError) {
+            const details = err.errors.map(e => e.message).join('；');
+            throw new Error(`所有下载源均失败（${details}）`);
+        }
+        throw err;
+    }
 }
 
 /**
@@ -866,19 +922,12 @@ async function resolveFirmwareSource() {
 async function downloadFirmwareFile() {
     try {
         updateStatus('获取固件下载地址…');
-        const { url, fileName } = await resolveFirmwareSource();
+        const { urls, fileName } = await resolveFirmwareSource();
 
         updateStatus('下载固件中…');
         logActivity(`下载固件（${channelLabel()}）…`, 'info');
-        const res = await withTimeout(
-            async () => fetch(addCacheBuster(url), { cache: 'no-store' }),
-            FETCH_TIMEOUT,
-            '下载固件'
-        );
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status} ${res.statusText}`);
-        }
-        const blob = await res.blob();
+        const { buf } = await fetchFastest(urls, '下载固件');
+        const blob = new Blob([buf]);
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = blobUrl;
@@ -930,26 +979,19 @@ async function fetchFirmwareVersion() {
 }
 
 /**
- * 从指定 URL 下载并解析 UF2 固件（共用于烧录固件与擦除固件）。
- * 每次调用都会带新的缓存规避参数，保证不命中缓存；失败时抛错。
- * @param {string} url 固件 UF2 文件的完整下载地址
+ * 从指定地址（单个或多个 CDN 源）下载并解析 UF2 固件（共用于烧录固件与擦除固件）。
+ * 传数组时走多源竞速（fetchFastest）：同时请求、最先成功者胜出、其余中止，
+ * 全部失败才抛错。每次调用都会带新的缓存规避参数，保证不命中缓存。
+ * @param {string|string[]} url 固件 UF2 下载地址（单源传字符串，多源传数组）
  * @param {string} fileName 固件文件名（用于日志与展示）
  * @param {string} hash 固件版本 hash（用于统计上报）
  * @returns {Promise<FirmwareData>}
  */
 async function downloadUf2(url, fileName, hash = '') {
+    const urls = Array.isArray(url) ? url : [url];
     const startTime = Date.now();
-    const res = await withTimeout(
-        async () => fetch(addCacheBuster(url), { cache: 'no-store' }),
-        FETCH_TIMEOUT,
-        '获取固件'
-    );
-
-    if (!res.ok) {
-        throw new Error(`HTTP ${res.status} ${res.statusText}`);
-    }
-
-    const uf2Data = new Uint8Array(await res.arrayBuffer());
+    const { buf } = await fetchFastest(urls, '获取固件');
+    const uf2Data = new Uint8Array(buf);
     const elapsedMs = Date.now() - startTime;
     const downloadSpeed = elapsedMs > 0 ? (uf2Data.length * 1000) / elapsedMs : 0;
 
@@ -973,11 +1015,11 @@ async function downloadUf2(url, fileName, hash = '') {
 async function fetchFirmwareData() {
     logActivity(`获取固件中（${channelLabel()}）…`, 'info');
 
-    // 1. 解析当前渠道 / 平台的固件地址与版本 hash
-    const { url, fileName, hash } = await resolveFirmwareSource();
+    // 1. 解析当前渠道 / 平台的固件地址（全部 CDN 源）与版本 hash
+    const { urls, fileName, hash } = await resolveFirmwareSource();
 
-    // 2. 下载并解析
-    const firmware = await downloadUf2(url, fileName, hash);
+    // 2. 下载并解析（多源竞速）
+    const firmware = await downloadUf2(urls, fileName, hash);
 
     // 3. 稳定版附带获取版本号（仅日志展示用，失败不影响烧录；
     //    host测试 是固定固件、最新版没有版本号，均不适用）
