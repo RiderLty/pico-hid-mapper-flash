@@ -94,6 +94,15 @@ body {
     font-weight: 600;
 }
 
+/* 链接型按钮：靠行最右（如上位机控制工具外链） */
+.btn-tool-link {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
 /* 按钮 */
 .btn {
     padding: 8px 18px;
