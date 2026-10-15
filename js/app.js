@@ -19,7 +19,6 @@ import {
     FIRMWARE_HOST_TEST_URL,
     FIRMWARE_CDN_PREFIXES,
     FIRMWARE_CDN_SUFFIX,
-    FIRMWARE_BOOM_URL,
     FETCH_TIMEOUT,
     DEFAULT_USB_TIMEOUT,
     FLASH_SPEED,
@@ -979,7 +978,7 @@ async function fetchFirmwareVersion() {
 }
 
 /**
- * 从指定地址（单个或多个 CDN 源）下载并解析 UF2 固件（共用于烧录固件与擦除固件）。
+ * 从指定地址（单个或多个 CDN 源）下载并解析 UF2 固件（用于烧录固件）。
  * 传数组时走多源竞速（fetchFastest）：同时请求、最先成功者胜出、其余中止，
  * 全部失败才抛错。每次调用都会带新的缓存规避参数，保证不命中缓存。
  * @param {string|string[]} url 固件 UF2 下载地址（单源传字符串，多源传数组）
@@ -1216,16 +1215,16 @@ async function flash() {
 //
 
 /**
- * 清空flash流程：下载擦除固件（flash_boom）并烧录，然后重启设备。
- * 设备重启后由擦除固件自动擦除自身代码之后的所有 flash 区域，
- * 完成后自动回到 BOOTSEL 模式，等待重新烧录。
+ * 清空flash流程：通过 PICOBOOT 直接擦除整片 flash（FLASH_SIZE 固定 2MB），
+ * 不再借助擦除固件。擦除后为空白 flash（全 0xFF），
+ * 设备始终处于 BOOTSEL 模式，擦除完成后可直接重新烧录固件。
  * @returns {Promise<void>}
  */
 async function eraseFlash() {
     if (busy) return;
 
     // 二次确认放在 busy=true 之前，取消时不闪禁用态
-    const ok = window.confirm('清空flash 将烧录擦除固件并重启设备：\n\n设备重启后会自动擦除剩余的全部 flash（固件和所有已保存的数据都会被删除），完成后回到 BOOTSEL 模式，之后需重新烧录固件。确定继续吗？');
+    const ok = window.confirm('清空flash 将直接擦除整片 2MB flash：\n\n固件和所有已保存的数据都会被删除，擦除后设备保持在 BOOTSEL 模式，之后需重新烧录固件。确定继续吗？');
     if (!ok) {
         logActivity('已取消清空flash', 'info');
         return;
@@ -1233,53 +1232,36 @@ async function eraseFlash() {
 
     busy = true;
     updateUi();
-    updateStatus('正在获取擦除固件…');
 
-    // 1. 每次都重新下载擦除固件（带新的缓存规避参数）
-    let firmware;
-    try {
-        firmware = await downloadUf2(FIRMWARE_BOOM_URL, 'flash_boom.uf2');
-        logActivity(`擦除固件获取成功：[${firmware.sha256Short}] ${formatBytes(firmware.origSize)} , ${formatSpeed(firmware.downloadSpeed)}`, 'success');
-    } catch (error) {
-        logActivity(`获取擦除固件失败：${error.message}`, 'error');
-        updateStatus('获取擦除固件失败');
-        busy = false;
-        updateUi();
-        return;
-    }
-
-    // 2. 连接设备（未连接则先请求选择设备）
+    // 1. 连接设备（未连接则先请求选择设备）
     if (!(await checkAndTryConnect())) {
         busy = false;
         updateUi();
         return;
     }
 
-    // 3. 烧录擦除固件
-    updateStatus('正在烧录擦除固件…');
+    const start = picoboot.getTarget().flashStart();
+    updateStatus('正在擦除整片 flash…');
 
-    // 初始化进度条并计算预计耗时
-    const progressInterval = setupProgressInterval(firmware.data.length, FLASH_SPEED);
-    const timeoutMs = calcTimeout(firmware.data.length, FLASH_SPEED);
+    // 整片擦除耗时按烧录综合速度估算（实际擦除比擦+写更快，此估算偏保守）
+    const progressInterval = setupProgressInterval(FLASH_SIZE, FLASH_SPEED);
+    const timeoutMs = calcTimeout(FLASH_SIZE, FLASH_SPEED);
 
     try {
-        logActivity(`正在烧录擦除固件 [${firmware.sha256Short}]（${formatBytes(firmware.data.length)}）…`, 'info');
+        logActivity(`正在擦除整片 flash：0x${start.toString(16)} - 0x${(start + FLASH_SIZE).toString(16)}（${formatBytes(FLASH_SIZE)}）…`, 'info');
         await withTimeout(
-            async () => picoboot.flashEraseAndWrite(firmware.address, firmware.data),
+            async () => picoboot.flashErase(start, FLASH_SIZE),
             timeoutMs,
-            '烧录擦除固件'
+            '整片擦除'
         );
 
         clearProgressInterval(progressInterval, 100);
-        logActivity('擦除固件烧录成功', 'success');
+        logActivity('flash 已全部擦除（空白态 0xFF）', 'success');
 
-        // 4. 重启设备，擦除固件随即自动运行：清空剩余 flash 后回到 BOOTSEL
-        updateStatus('正在重启并清空…');
-        await rebootAndDisconnect();
-
-        logActivity('设备已重启，正在自动清空 flash，完成后将回到 BOOTSEL 模式', 'warning');
-        logActivity('清空完成后请重新烧录固件', 'info');
-        updateStatus('已重启，设备清空中…');
+        // 2. 断开连接；无需重启，设备本就处于 BOOTSEL 模式
+        await disconnectNoThrow();
+        updateStatus('清空完成（BOOTSEL 模式）');
+        logActivity('清空完成后请重新烧录固件', 'warning');
     } catch (error) {
         clearProgressInterval(progressInterval, 100, true);
         logActivity(`清空失败：${error.message}`, 'error');
