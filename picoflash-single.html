@@ -101,13 +101,10 @@ body {
     font-weight: 600;
 }
 
-/* 链接型按钮：靠行最右（如上位机控制工具外链） */
+/* 链接型按钮：贴住行右边缘（如上位机控制工具外链） */
 .btn-tool-link {
     margin-left: auto;
-    display: inline-flex;
-    align-items: center;
     text-decoration: none;
-    white-space: nowrap;
 }
 
 /* 按钮 */
@@ -158,6 +155,12 @@ body {
 .btn-danger {
     background-color: var(--color-danger);
     border-color: var(--color-danger);
+    color: #ffffff;
+}
+
+.btn-success {
+    background-color: var(--color-success);
+    border-color: var(--color-success);
     color: #ffffff;
 }
 
@@ -681,7 +684,7 @@ body {
                 <button id="connectBtn" class="btn btn-primary">连接设备</button>
                 <span id="statusLine" class="status-line">未连接</span>
                 <a href="https://pico.rd5isto.org/webhid/" target="_blank" rel="noopener"
-                   class="btn btn-secondary btn-tool-link">上位机控制工具</a>
+                   class="btn btn-success btn-tool-link">上位机控制工具</a>
             </div>
 
             <dl id="deviceInfoPanel" class="device-info hidden">
