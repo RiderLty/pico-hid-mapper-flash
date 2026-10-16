@@ -45,13 +45,6 @@
             <div class="card-header">
                 <h2>烧录操作</h2>
                 <div class="switch-group">
-                    <!-- 平台选择已合并进版本渠道（host测试），暂时注释掉
-                    <div class="version-switch platform-switch" id="platformSwitch" role="group" aria-label="选择目标平台">
-                        <button id="platformAndroidBtn" class="version-option is-active" type="button" data-platform="android" aria-pressed="true">安卓</button>
-                        <button id="platformIosBtn" class="version-option" type="button" data-platform="ios" aria-pressed="false">iOS</button>
-                        <button id="platformHostBtn" class="version-option" type="button" data-platform="host" aria-pressed="false">host测试</button>
-                    </div>
-                    -->
                     <!-- 版本选择：自绘下拉（2026-10-11 起取代 version-select）。
                          value = 渠道[:板型]；最新版为默认板调试通道；蓝牙板仅稳定版。 -->
                     <div class="version-dropdown">
@@ -69,7 +62,6 @@
                             <button type="button" class="version-item" role="option" data-value="stable:pico2w" aria-selected="false"><span class="version-dot dot-success"></span>稳定版 · Pico 2 W（蓝牙）</button>
                             <button type="button" class="version-item" role="option" data-value="stable:waveshare_pw" aria-selected="false"><span class="version-dot dot-success"></span>稳定版 · Waveshare（蓝牙）</button>
                             <button type="button" class="version-item" role="option" data-value="latest" aria-selected="false"><span class="version-dot dot-latest"></span>最新版</button>
-                            <button type="button" class="version-item" role="option" data-value="host" aria-selected="false"><span class="version-dot dot-accent"></span>host测试</button>
                         </div>
                     </div>
                 </div>

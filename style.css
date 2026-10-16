@@ -281,7 +281,7 @@ body {
 
 /* 固件版本切换 */
 /* 版本选择自绘下拉（2026-10-11 起取代 version-switch 按钮组，支持板型变体选项）。
-   视觉沿用旧按钮组的胶囊语言：状态圆点（绿=稳定 橙=最新版 青=host测试）+ 选中项反色。 */
+   视觉沿用旧按钮组的胶囊语言：状态圆点（绿=稳定 橙=最新版）+ 选中项反色。 */
 .version-dropdown {
     position: relative;
     display: inline-block;
@@ -335,10 +335,6 @@ body {
 
 .dot-latest {
     background-color: var(--color-latest);
-}
-
-.dot-accent {
-    background-color: var(--color-accent);
 }
 
 .version-menu {
@@ -452,10 +448,6 @@ body {
     background-color: var(--color-warning);
 }
 
-.version-option[data-channel='host']::before {
-    background-color: var(--color-accent);
-}
-
 .version-option[data-channel='stable'].is-active {
     background-color: var(--color-success);
     color: #ffffff;
@@ -466,12 +458,6 @@ body {
     background-color: var(--color-latest);
     color: #ffffff;
     box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
-}
-
-.version-option[data-channel='host'].is-active {
-    background-color: var(--color-accent);
-    color: #ffffff;
-    box-shadow: 0 2px 8px rgba(6, 182, 212, 0.35);
 }
 
 .version-option.is-active::before {
@@ -588,10 +574,6 @@ body {
     background-color: var(--color-latest);
 }
 
-.version-option[data-platform='host']::before {
-    background-color: var(--color-accent);
-}
-
 .version-option[data-platform='android'].is-active {
     background-color: var(--color-success);
     color: #ffffff;
@@ -602,12 +584,6 @@ body {
     background-color: var(--color-latest);
     color: #ffffff;
     box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
-}
-
-.version-option[data-platform='host'].is-active {
-    background-color: var(--color-accent);
-    color: #ffffff;
-    box-shadow: 0 2px 8px rgba(6, 182, 212, 0.35);
 }
 
 

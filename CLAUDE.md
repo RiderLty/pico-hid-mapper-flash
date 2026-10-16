@@ -7,13 +7,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pico⚡flash is a pure JavaScript, dependency-free WebUSB implementation of Raspberry Pi's PICOBOOT protocol for flashing RP2040 and RP2350 microcontrollers. It ships two things in one repo:
 
 1. **The library** (`pkg/`) — an ES6 module library (published as the `picoflash` npm package) for talking to PICOBOOT devices.
-2. **The website** (`index.html`, `style.css`, `js/app.js`, `js/config.js`, `js/uf2/uf2.js`) — a custom single-page flashing tool with a Chinese UI. It connects to a device, shows its basic info, and flashes a UF2 firmware fetched from a fixed URL.
+2. **The website** (`index.html`, `style.css`, `js/app.js`, `js/config.js`, `js/uf2/uf2.js`) — a custom single-page flashing tool with a Chinese UI. It connects to a device, shows its basic info, and flashes a UF2 firmware fetched through channel hash endpoints and multiple CDN sources.
 
-Both are plain ES6 modules with **no build step, no external dependencies, and no bundler**. The website imports the library via relative paths like `../pkg/picoboot.js` and `./uf2/uf2.js`.
+Both are plain ES6 modules with **no required build step, no external dependencies, and no bundler**. The website imports the library via relative paths like `../pkg/picoboot.js` and `./uf2/uf2.js`.
 
 ## Commands
 
 - **Run the site locally**: `python3 -m http.server 8000` from the repo root (or `npm run serve` inside `pkg/`). WebUSB requires a secure context, so access via `http://localhost:8000` (treated as secure) or over HTTPS (e.g. `mkcert`). On Android or from another machine you must use HTTPS.
+- **Generate standalone HTML**: `node build-single-html.mjs` after website source changes; commit the updated `picoflash-single.html` alongside the source.
 - **Type-check**: `npx tsc` (config in `tsconfig.json`: `noEmit`, `checkJs`, `allowJs` — JSDoc annotations are the type system). Type-checking is editor/CI oriented; no tooling is installed in the repo.
 - **Lint**: `npx eslint .` (config in `.eslintrc.json`). The only active rules are `@typescript-eslint` promise rules: `no-floating-promises`, `no-misused-promises`, `require-await`, `promise-function-async`. Match this style — keep promise-returning functions `async`, and never leave a promise unawaited.
 - **Tests**: none exist. The only runnable verification is the browser UI itself (`examples/basic.html`, `examples/extended.html`) or manual flashing against real hardware.
@@ -51,7 +52,7 @@ A single UI-controller file wiring up `index.html` by element IDs (Chinese UI). 
 - A single global `picoboot` / `connection` pair with a `connected()` guard; all operations go through `checkAndTryConnect()`.
 - Every device operation is wrapped in `withDefaultTimeout`/`withTimeout` (Promise.race) plus an estimated-timeout via `calcTimeout` (data length ÷ speed constant, +5s buffer, ×1.1), and drives the progress bar via `setupProgressInterval`/`clearProgressInterval`.
 - `tryRecover()` is the frontend counterpart to the stall model: on error it queries `getCommandStatus()` then resets the interface, falling back to a disconnect.
-- **Firmware source is a fixed URL** (`FIRMWARE_URL` in `js/config.js`); there is no upload/selection UI. Clicking 烧录固件 (flash) fetches the UF2 fresh every time via `fetchFirmwareData()`, which appends a new `?t=<Date.now()>` cache-buster (`addCacheBuster()`) plus `cache: 'no-store'` so a stale cached copy is never flashed. CORS: a cross-origin `FIRMWARE_URL` requires `Access-Control-Allow-Origin` on the server; hosting the `.uf2` same-origin avoids it.
+- **Firmware channels**: default-board stable, Pico 2 W Bluetooth stable, Waveshare Bluetooth stable, and default-board latest (debug). `js/config.js` defines channel hash endpoints and CDN prefixes. Each download resolves the selected hash and races CDN sources for the first successful UF2. Requests use a timestamp and `cache: 'no-store'`. Unknown saved channel values fall back to stable. Cross-origin firmware and metadata endpoints must allow CORS.
 - After connecting, `updateDeviceInfo()` fills the info panel from `getUsbDeviceInfo()` / `getTarget()`; flash range is derived per target in `flashEndForTarget()` (RP2040 → `0x11000000`, RP2350 → `0x12000000`, since `Target` has no `flashEnd()`).
 - OTP has no UI; `Connection.otpWrite` throws a `ValidationError` ("currently disabled for safety reasons") — OTP is one-time-programmable and irreversible.
 

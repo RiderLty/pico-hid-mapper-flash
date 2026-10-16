@@ -4,7 +4,7 @@
 // MIT License
 //
 // 把本项目打包成一个自包含的单个 HTML 文件（不含固件）。
-// 固件仍在运行时从 js/config.js 中的 FIRMWARE_URL 拉取。
+// 固件仍在运行时根据 js/config.js 中的渠道 hash 接口和 CDN 配置拉取。
 //
 // 用法：node build-single-html.mjs
 // 输出：picoflash-single.html
