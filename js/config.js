@@ -52,6 +52,37 @@ export const DEFAULT_REBOOT_DELAY = 100;
 /** @type {number} 板上 flash 芯片实际容量（字节），用于容量显示与整片擦除 */
 export const FLASH_SIZE = 2 * 1024 * 1024;
 
+//
+// 用户配置区（flash 尾部）—— 必须与 pico-hid-mapper/src/flash_layout.h 保持一致
+//
+// 2MB flash 顶部布局（地址低 → 高）：
+//   [Lua 脚本 68KB][KV 设置 128KB][btstack bank 8KB][E10 勘误保留 4KB] ← flash 顶
+// 相对偏移 0x1CC000，XIP 地址 0x101CC000；KV 区起始 0x1DD000。
+// 普通烧录只覆盖固件镜像（约 0x10000000–0x1010A000），不会碰这块；
+// 「清空 flash」会整片擦除，因此需要先导出备份。
+
+/** @type {number} E10 勘误保留区（flash 最顶部 1 个扇区） */
+export const FLASH_ERRATA_RESERVE_SIZE = 4 * 1024;
+
+/** @type {number} btstack flash bank（KV 区之上的 2 个扇区） */
+export const FLASH_BTSTACK_BANK_SIZE = 8 * 1024;
+
+/** @type {number} KV 设置区大小（固件 KVSTORE_BANK_SIZE） */
+export const USER_CONFIG_KV_SIZE = 128 * 1024;
+
+/** @type {number} Lua 脚本区大小（固件 LUA_REGION_SIZE） */
+export const USER_CONFIG_LUA_SIZE = 68 * 1024;
+
+/** @type {number} 用户配置区总大小 = Lua 脚本 + KV 设置（196KB） */
+export const USER_CONFIG_REGION_SIZE = USER_CONFIG_LUA_SIZE + USER_CONFIG_KV_SIZE;
+
+/** @type {number} 用户配置区相对 flash 起始的偏移（2MB 布局下为 0x1CC000） */
+export const USER_CONFIG_REGION_OFFSET =
+    FLASH_SIZE - FLASH_ERRATA_RESERVE_SIZE - FLASH_BTSTACK_BANK_SIZE - USER_CONFIG_REGION_SIZE;
+
+/** @type {number} 分块读取用户配置区时的单块大小 */
+export const USER_CONFIG_READ_CHUNK_SIZE = 64 * 1024;
+
 /** @type {number} 短 SHA-256 校验值取前几位十六进制字符 */
 export const SHA256_SHORT_LENGTH = 8;
 

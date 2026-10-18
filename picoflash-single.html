@@ -725,6 +725,16 @@ body {
         </section>
 
         <section class="card">
+            <h2>用户配置</h2>
+            <p class="firmware-hint">备份/恢复 flash 尾部的用户数据区：Lua 脚本 68KB + KV 设置 128KB（共 196KB）。需在 BOOTSEL 模式下操作；导入会覆盖设备上现有的脚本和设置。</p>
+            <div class="action-row">
+                <button id="exportConfigBtn" class="btn btn-primary" type="button">导出配置</button>
+                <button id="importConfigBtn" class="btn btn-secondary" type="button">导入配置</button>
+                <input id="importConfigFile" type="file" accept=".bin,application/octet-stream" hidden>
+            </div>
+        </section>
+
+        <section class="card">
             <h2>日志</h2>
             <div id="activityContent" class="activity-log"></div>
         </section>
@@ -2526,6 +2536,37 @@ const DEFAULT_REBOOT_DELAY = 100;
 /** @type {number} 板上 flash 芯片实际容量（字节），用于容量显示与整片擦除 */
 const FLASH_SIZE = 2 * 1024 * 1024;
 
+//
+// 用户配置区（flash 尾部）—— 必须与 pico-hid-mapper/src/flash_layout.h 保持一致
+//
+// 2MB flash 顶部布局（地址低 → 高）：
+//   [Lua 脚本 68KB][KV 设置 128KB][btstack bank 8KB][E10 勘误保留 4KB] ← flash 顶
+// 相对偏移 0x1CC000，XIP 地址 0x101CC000；KV 区起始 0x1DD000。
+// 普通烧录只覆盖固件镜像（约 0x10000000–0x1010A000），不会碰这块；
+// 「清空 flash」会整片擦除，因此需要先导出备份。
+
+/** @type {number} E10 勘误保留区（flash 最顶部 1 个扇区） */
+const FLASH_ERRATA_RESERVE_SIZE = 4 * 1024;
+
+/** @type {number} btstack flash bank（KV 区之上的 2 个扇区） */
+const FLASH_BTSTACK_BANK_SIZE = 8 * 1024;
+
+/** @type {number} KV 设置区大小（固件 KVSTORE_BANK_SIZE） */
+const USER_CONFIG_KV_SIZE = 128 * 1024;
+
+/** @type {number} Lua 脚本区大小（固件 LUA_REGION_SIZE） */
+const USER_CONFIG_LUA_SIZE = 68 * 1024;
+
+/** @type {number} 用户配置区总大小 = Lua 脚本 + KV 设置（196KB） */
+const USER_CONFIG_REGION_SIZE = USER_CONFIG_LUA_SIZE + USER_CONFIG_KV_SIZE;
+
+/** @type {number} 用户配置区相对 flash 起始的偏移（2MB 布局下为 0x1CC000） */
+const USER_CONFIG_REGION_OFFSET =
+    FLASH_SIZE - FLASH_ERRATA_RESERVE_SIZE - FLASH_BTSTACK_BANK_SIZE - USER_CONFIG_REGION_SIZE;
+
+/** @type {number} 分块读取用户配置区时的单块大小 */
+const USER_CONFIG_READ_CHUNK_SIZE = 64 * 1024;
+
 /** @type {number} 短 SHA-256 校验值取前几位十六进制字符 */
 const SHA256_SHORT_LENGTH = 8;
 
@@ -2644,6 +2685,11 @@ const devicePage = document.getElementById('devicePage');
 // 烧录操作
 const flashBtn = /** @type {HTMLButtonElement} */ (document.getElementById('flashBtn'));
 const eraseBtn = /** @type {HTMLButtonElement} */ (document.getElementById('eraseBtn'));
+
+// 用户配置导出/导入
+const exportConfigBtn = /** @type {HTMLButtonElement} */ (document.getElementById('exportConfigBtn'));
+const importConfigBtn = /** @type {HTMLButtonElement} */ (document.getElementById('importConfigBtn'));
+const importConfigFile = /** @type {HTMLInputElement} */ (document.getElementById('importConfigFile'));
 
 // 活动日志
 /** @type {HTMLElement} */
@@ -2849,6 +2895,17 @@ function updateEraseBtn() {
 }
 
 /**
+ * 更新用户配置导出/导入按钮。
+ * WebUSB 不可用时无法连接设备，两个按钮都禁用。
+ * @return {void}
+ */
+function updateConfigBtns() {
+    const supported = 'usb' in navigator;
+    exportConfigBtn.disabled = busy || !supported;
+    importConfigBtn.disabled = busy || !supported;
+}
+
+/**
  * 更新状态行。
  * @return {void}
  */
@@ -2872,6 +2929,7 @@ function updateUi() {
     updateConnectBtn();
     updateFlashBtn();
     updateEraseBtn();
+    updateConfigBtns();
     updateProgress();
 }
 
@@ -3703,6 +3761,279 @@ async function eraseFlash() {
 }
 
 //
+// 用户配置导出/导入（flash 尾部 Lua + KV 区）
+//
+
+/**
+ * 用户配置区在设备上的绝对地址（XIP 地址）。
+ * @returns {number}
+ */
+function userConfigAddress() {
+    return picoboot.getTarget().flashStart() + USER_CONFIG_REGION_OFFSET;
+}
+
+/**
+ * 用户配置区依赖 pico-hid-mapper 的 RP2350 2MB flash 布局。
+ * @returns {boolean}
+ */
+function checkConfigTarget() {
+    if (!picoboot || picoboot.getTarget().type !== 'RP2350') {
+        logActivity('用户配置功能仅支持 RP2350（pico-hid-mapper）设备', 'error');
+        updateStatus('当前设备不支持用户配置');
+        return false;
+    }
+    return true;
+}
+
+/**
+ * 计算字节内容的 SHA-256（小写十六进制）。
+ * @param {Uint8Array} bytes
+ * @returns {Promise<string>}
+ */
+async function sha256Hex(bytes) {
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
+/**
+ * 用户配置导出文件名（带本地时间戳）。
+ * @returns {string}
+ */
+function configFileName() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    return `pico-hid-mapper-config-${stamp}.bin`;
+}
+
+/**
+ * 触发浏览器下载一段字节。
+ * @param {Uint8Array} bytes
+ * @param {string} fileName
+ * @return {void}
+ */
+function downloadBytes(bytes, fileName) {
+    const blob = new Blob([bytes], { type: 'application/octet-stream' });
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+}
+
+/**
+ * 分块读取一段 flash。
+ * 先重置接口并退出 XIP（与 Picoboot.flashRead 的内部行为一致），
+ * 之后用 Connection.flashRead 连续读取，避免每块都重复 reset/exitXip。
+ * @param {number} address
+ * @param {number} size
+ * @param {(read: number, total: number) => void} onProgress
+ * @returns {Promise<Uint8Array>}
+ */
+async function readFlashRegion(address, size, onProgress) {
+    if (!picoboot || !connection) {
+        throw new Error('没有已连接设备');
+    }
+
+    await connection.resetInterface();
+    await connection.exitXip();
+
+    const data = new Uint8Array(size);
+    let offset = 0;
+
+    while (offset < size) {
+        const len = Math.min(USER_CONFIG_READ_CHUNK_SIZE, size - offset);
+        const chunk = await connection.flashRead(address + offset, len);
+
+        if (chunk.length !== len) {
+            throw new Error(`读取长度不符：预期 ${len} 字节，实际 ${chunk.length} 字节`);
+        }
+
+        data.set(chunk, offset);
+        offset += len;
+        onProgress(offset, size);
+    }
+
+    return data;
+}
+
+/**
+ * 导出用户配置区（Lua 脚本 + KV 设置），下载为 bin 文件。
+ * @returns {Promise<void>}
+ */
+async function exportUserConfig() {
+    if (busy) return;
+
+    busy = true;
+    updateUi();
+    updateStatus('正在连接设备…');
+
+    if (!(await checkAndTryConnect())) {
+        busy = false;
+        updateUi();
+        return;
+    }
+    if (!checkConfigTarget()) {
+        busy = false;
+        updateUi();
+        return;
+    }
+
+    updateStatus('正在读取用户配置…');
+    const address = userConfigAddress();
+    progressPercent = 1;
+    updateProgress();
+
+    try {
+        logActivity(
+            `正在读取用户配置区：0x${address.toString(16)} - 0x${(address + USER_CONFIG_REGION_SIZE).toString(16)}（${formatBytes(USER_CONFIG_REGION_SIZE)}）…`,
+            'info'
+        );
+
+        const data = await withTimeout(
+            async () => readFlashRegion(address, USER_CONFIG_REGION_SIZE, (read, total) => {
+                progressPercent = Math.min(99, Math.round((read / total) * 100));
+                updateProgress();
+            }),
+            calcTimeout(USER_CONFIG_REGION_SIZE, FLASH_SPEED),
+            '读取用户配置'
+        );
+
+        const fileName = configFileName();
+        downloadBytes(data, fileName);
+
+        progressPercent = 100;
+        updateProgress();
+        logActivity(`用户配置已导出：${fileName}（${formatBytes(data.length)}）`, 'success');
+        updateStatus('用户配置已导出');
+    } catch (error) {
+        progressPercent = 100;
+        updateProgress(true);
+        logActivity(`导出用户配置失败：${error.message}`, 'error');
+        if (await tryRecover()) {
+            updateStatus('导出失败');
+        } else {
+            updateStatus('导出失败（已断开）');
+        }
+    } finally {
+        busy = false;
+        updateUi();
+    }
+}
+
+/**
+ * 导入用户配置：校验大小 → 擦除并写入 Lua+KV 区 → 读回 SHA-256 校验。
+ * 导入成功后保持 BOOTSEL，方便继续烧录固件。
+ * @param {File} file
+ * @returns {Promise<void>}
+ */
+async function importUserConfig(file) {
+    if (busy) return;
+
+    if (file.size !== USER_CONFIG_REGION_SIZE) {
+        logActivity(
+            `配置文件大小不正确：预期 ${USER_CONFIG_REGION_SIZE} 字节（${formatBytes(USER_CONFIG_REGION_SIZE)}），实际 ${file.size} 字节`,
+            'error'
+        );
+        updateStatus('配置文件大小不正确');
+        return;
+    }
+
+    const ok = window.confirm(
+        '导入用户配置将覆盖设备上的：\n\n' +
+        '· Lua 脚本（68 KB）\n' +
+        '· 所有 KV 设置（128 KB）\n\n' +
+        '当前配置会被擦除且无法撤销，确定继续吗？'
+    );
+    if (!ok) {
+        logActivity('已取消导入用户配置', 'info');
+        return;
+    }
+
+    busy = true;
+    updateUi();
+    updateStatus('正在连接设备…');
+
+    if (!(await checkAndTryConnect())) {
+        busy = false;
+        updateUi();
+        return;
+    }
+    if (!checkConfigTarget()) {
+        busy = false;
+        updateUi();
+        return;
+    }
+
+    let data;
+    try {
+        data = new Uint8Array(await file.arrayBuffer());
+        if (data.length !== USER_CONFIG_REGION_SIZE) {
+            throw new Error(`读取到的长度不符：预期 ${USER_CONFIG_REGION_SIZE} 字节，实际 ${data.length} 字节`);
+        }
+    } catch (error) {
+        busy = false;
+        updateUi();
+        logActivity(`读取配置文件失败：${error.message}`, 'error');
+        updateStatus('读取配置文件失败');
+        return;
+    }
+
+    updateStatus('正在导入用户配置…');
+    const address = userConfigAddress();
+    const progressInterval = setupProgressInterval(USER_CONFIG_REGION_SIZE, FLASH_SPEED);
+    const timeoutMs = calcTimeout(USER_CONFIG_REGION_SIZE, FLASH_SPEED);
+
+    try {
+        logActivity(`正在导入用户配置：${file.name}（${formatBytes(data.length)}）…`, 'info');
+        await withTimeout(
+            async () => picoboot.flashEraseAndWrite(address, data),
+            timeoutMs,
+            '导入用户配置'
+        );
+
+        updateStatus('正在校验用户配置…');
+        logActivity('正在读回校验…', 'info');
+
+        const readBack = await withTimeout(
+            async () => readFlashRegion(address, USER_CONFIG_REGION_SIZE, () => {}),
+            timeoutMs,
+            '校验用户配置'
+        );
+
+        const expected = await sha256Hex(data);
+        const actual = await sha256Hex(readBack);
+
+        if (expected !== actual) {
+            throw new Error(
+                `校验失败：写入内容与文件不一致（文件 ${expected.slice(0, SHA256_SHORT_LENGTH)}，设备 ${actual.slice(0, SHA256_SHORT_LENGTH)}）`
+            );
+        }
+
+        clearProgressInterval(progressInterval, 100);
+        logActivity(`用户配置已导入并通过校验（SHA-256 ${expected.slice(0, SHA256_SHORT_LENGTH)}）`, 'success');
+        logActivity('设备保持在 BOOTSEL 模式；重新上电（不按 BOOTSEL）后配置生效', 'info');
+        updateStatus('用户配置已导入（BOOTSEL）');
+    } catch (error) {
+        clearProgressInterval(progressInterval, 100, true);
+        logActivity(`导入用户配置失败：${error.message}`, 'error');
+        if (await tryRecover()) {
+            updateStatus('导入失败');
+        } else {
+            updateStatus('导入失败（已断开）');
+        }
+    } finally {
+        busy = false;
+        updateUi();
+    }
+}
+
+//
 // 错误恢复（低层 PICOBOOT 操作）
 //
 
@@ -3831,6 +4162,27 @@ flashBtn.addEventListener('click', async () => {
 
 eraseBtn.addEventListener('click', async () => {
     await eraseFlash();
+});
+
+exportConfigBtn.addEventListener('click', async () => {
+    await exportUserConfig();
+});
+
+importConfigBtn.addEventListener('click', () => {
+    if (busy) return;
+    importConfigFile.click();
+});
+
+importConfigFile.addEventListener('change', async () => {
+    const file = importConfigFile.files && importConfigFile.files[0];
+    if (!file) return;
+
+    try {
+        await importUserConfig(file);
+    } finally {
+        // 清空 value，允许下次选择同一个文件时再次触发 change
+        importConfigFile.value = '';
+    }
 });
 
 firmwareTrigger.addEventListener('click', () => {

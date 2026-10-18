@@ -89,6 +89,16 @@
         </section>
 
         <section class="card">
+            <h2>用户配置</h2>
+            <p class="firmware-hint">备份/恢复 flash 尾部的用户数据区：Lua 脚本 68KB + KV 设置 128KB（共 196KB）。需在 BOOTSEL 模式下操作；导入会覆盖设备上现有的脚本和设置。</p>
+            <div class="action-row">
+                <button id="exportConfigBtn" class="btn btn-primary" type="button">导出配置</button>
+                <button id="importConfigBtn" class="btn btn-secondary" type="button">导入配置</button>
+                <input id="importConfigFile" type="file" accept=".bin,application/octet-stream" hidden>
+            </div>
+        </section>
+
+        <section class="card">
             <h2>日志</h2>
             <div id="activityContent" class="activity-log"></div>
         </section>

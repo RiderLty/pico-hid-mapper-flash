@@ -14,6 +14,8 @@ As well as a [website](https://picoflash.org) pico⚡flash is a full Javascript 
 
 基础输入测试直接使用普通固件：未激活设备也可切换 Host 模式，允许鼠标 X/Y、左键和中键，键盘 WASD 与飘号键（`KEY_GRAVE`），以及手柄 Select、RS、RT 按键、左右摇杆和 RT 模拟量。蓝牙固件的未激活手柄使用同样的白名单。完整输入需激活设备。
 
+页面还支持导出/导入 flash 尾部的用户配置区（Lua 脚本 68KB + KV 设置 128KB，共 196KB）：导出为 `.bin` 备份；导入时整区擦除并写入，写完读回 SHA-256 校验。需在 BOOTSEL 模式下操作，导入成功后设备保持 BOOTSEL，重新上电后配置生效。
+
 修改网站源码后运行 `node build-single-html.mjs` 同步生成单文件版本 `picoflash-single.html`。
 
 ## Features

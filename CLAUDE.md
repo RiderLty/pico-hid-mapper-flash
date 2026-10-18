@@ -55,6 +55,7 @@ A single UI-controller file wiring up `index.html` by element IDs (Chinese UI). 
 - **Firmware channels**: default-board stable, Pico 2 W Bluetooth stable, Waveshare Bluetooth stable, and default-board latest (debug). `js/config.js` defines channel hash endpoints and CDN prefixes. Each download resolves the selected hash and races CDN sources for the first successful UF2. Requests use a timestamp and `cache: 'no-store'`. Unknown saved channel values fall back to stable. Cross-origin firmware and metadata endpoints must allow CORS.
 - After connecting, `updateDeviceInfo()` fills the info panel from `getUsbDeviceInfo()` / `getTarget()`; flash range is derived per target in `flashEndForTarget()` (RP2040 → `0x11000000`, RP2350 → `0x12000000`, since `Target` has no `flashEnd()`).
 - OTP has no UI; `Connection.otpWrite` throws a `ValidationError` ("currently disabled for safety reasons") — OTP is one-time-programmable and irreversible.
+- **User config export/import** reads/writes the flash-tail Lua + KV region (196KB at flash offset `0x1CC000` in the 2MB layout). The size/offset constants live in `js/config.js` and must stay in sync with `pico-hid-mapper/src/flash_layout.h` (`[Lua 68KB][KV 128KB][btstack 8KB][E10 reserve 4KB]`). Import erases the whole region, then reads it back and compares SHA-256; it keeps the device in BOOTSEL.
 
 ### UF2 parsing (`js/uf2/uf2.js`)
 
