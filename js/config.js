@@ -80,8 +80,8 @@ export const USER_CONFIG_REGION_SIZE = USER_CONFIG_LUA_SIZE + USER_CONFIG_KV_SIZ
 export const USER_CONFIG_REGION_OFFSET =
     FLASH_SIZE - FLASH_ERRATA_RESERVE_SIZE - FLASH_BTSTACK_BANK_SIZE - USER_CONFIG_REGION_SIZE;
 
-/** @type {number} 分块读取用户配置区时的单块大小 */
-export const USER_CONFIG_READ_CHUNK_SIZE = 64 * 1024;
+/** @type {number} 分块读取用户配置区时的单块大小（与 picotool 的保守分块一致） */
+export const USER_CONFIG_READ_CHUNK_SIZE = 4 * 1024;
 
 /** @type {number} 短 SHA-256 校验值取前几位十六进制字符 */
 export const SHA256_SHORT_LENGTH = 8;
