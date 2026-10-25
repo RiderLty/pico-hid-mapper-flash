@@ -29,8 +29,8 @@ const TOOL_URL = 'https://pico.rd5isto.org/webhid/';
 const BOARDS = [
     {
         id: 'default',
-        name: '默认板 / 定制板',
-        desc: 'RP2350 开发板（双 USB-C）或自制定制板',
+        name: 'Waveshare RP2350-USB-C',
+        desc: '使用稳定版固件',
         img: 'img/board-default.jpg',
         bootselImg: 'img/bootsel-default.gif',
         chip: 'RP2350',
@@ -38,8 +38,8 @@ const BOARDS = [
     },
     {
         id: 'carl',
-        name: '成品机（定制外壳）',
-        desc: '3D 打印外壳的成品机，使用默认板固件',
+        name: '定制开发版（基础版）',
+        desc: '使用稳定版固件',
         img: 'img/board-carl.jpg',
         bootselImg: 'img/bootsel-carl.gif',
         chip: 'RP2350',
@@ -74,7 +74,7 @@ const CHANNELS = {
     },
     'latest': {
         label: '最新版（调试）',
-        desc: '默认板最新构建，功能最新但可能不稳定',
+        desc: '最新调试构建，功能最新但可能不稳定',
         dot: 'dot-latest',
     },
     'stable:pico2w': {
@@ -292,11 +292,6 @@ const STEP_DEFS = {
                         </button>
                     `).join('')}
                 </div>
-                <p class="wizard-hint">不确定板型？对照实物或板上丝印：<br>
-                    · 白色 3D 打印外壳成品机 → 成品机（定制外壳）<br>
-                    · 蓝色 RP2350 双 USB-C 开发板，或印有「Raspberry Pi Pico 2」→ 默认板 / 定制板<br>
-                    · 印有「Raspberry Pi Pico 2 W」或带无线模块 → Pico 2 W（蓝牙）<br>
-                    · 微雪（Waveshare）RP2350B-Plus W 无线板 → Waveshare（蓝牙）</p>
             `;
         },
         wire() {
