@@ -69,12 +69,12 @@ const BOARDS = [
 const CHANNELS = {
     'stable': {
         label: '稳定版',
-        desc: '固件自动适配设备平台，推荐大多数用户',
+        desc: '推荐所有用户；日常使用、没有特别说明时，始终选这个',
         dot: 'dot-success',
     },
     'latest': {
         label: '最新版（调试）',
-        desc: '最新调试构建，功能最新但可能不稳定',
+        desc: '调试构建，仅供作者通知时刷入；不确定请选稳定版',
         dot: 'dot-latest',
     },
     'stable:pico2w': {
@@ -442,10 +442,21 @@ const STEP_DEFS = {
                         `;
                     }).join('')}
                 </div>
+                <div class="wizard-note warn" id="wizardLatestWarn" hidden>
+                    最新版是<b>调试构建</b>：通常只用于作者排查问题或验证新改动。
+                    如果你没有收到「可以刷最新版」的通知（如群内公告），请返回选择<b>稳定版</b>。
+                </div>
                 <p class="wizard-hint" id="wizardVersionHint"></p>
             `;
         },
         wire() {
+            // 选中调试渠道时展示醒目提示
+            const latestWarn = /** @type {HTMLElement|null} */ (bodyEl.querySelector('#wizardLatestWarn'));
+            const updateLatestWarn = () => {
+                if (latestWarn) latestWarn.hidden = state.channel !== 'latest';
+            };
+            updateLatestWarn();
+
             for (const item of bodyEl.querySelectorAll('.wizard-choice')) {
                 item.addEventListener('click', () => {
                     state.channel = /** @type {HTMLElement} */ (item).dataset.channel || 'stable';
@@ -453,6 +464,7 @@ const STEP_DEFS = {
                     for (const c of bodyEl.querySelectorAll('.wizard-choice')) {
                         c.classList.toggle('is-selected', c === item);
                     }
+                    updateLatestWarn();
                     console.log(`向导：选择固件渠道 ${state.channel}`);
                 });
             }
