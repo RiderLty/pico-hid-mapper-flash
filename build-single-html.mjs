@@ -25,6 +25,7 @@ const BUNDLE_FILES = [
     'pkg/picoboot.js',
     'js/uf2/uf2.js',
     'js/config.js',
+    'js/wizard.js',
     'js/app.js',
 ];
 

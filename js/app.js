@@ -10,6 +10,7 @@ import { Picoboot } from '../pkg/picoboot.js';
 import { Connection } from '../pkg/connection.js';
 import { PicobootStatusCmd } from '../pkg/commands.js';
 import { uf2ToFlashBuffer } from './uf2/uf2.js';
+import { initWizard } from './wizard.js';
 import {
     FIRMWARE_STABLE_HASH_URL,
     FIRMWARE_STABLE_HASH_BOARD_URLS,
@@ -310,6 +311,27 @@ function updateProgress(error = false) {
     }
 }
 
+/**
+ * 读取已选设备的芯片信息（新手向导用）。
+ * 只要求已选择设备（requestDevice 成功），不要求已建立完整连接。
+ * @returns {{target: string, vidPid: string, product: string}|null}
+ */
+function getTargetInfo() {
+    if (!picoboot) return null;
+
+    try {
+        const info = picoboot.getUsbDeviceInfo();
+        return {
+            target: picoboot.getTarget().toString(),
+            vidPid: `${info.vendorId.toString(16).padStart(4, '0')}:${info.productId.toString(16).padStart(4, '0')}`,
+            product: info.productName || '-',
+        };
+    } catch (error) {
+        console.log(`读取设备信息失败：${error.message}`);
+        return null;
+    }
+}
+
 //
 // 按钮状态
 //
@@ -434,9 +456,10 @@ function calcTimeout(length, bps) {
  * 初始化进度条并启动定时更新。
  * @param {number} length
  * @param {number} bps
+ * @param {((percent: number) => void)|null} onProgress 额外进度回调（新手向导进度条用），可空
  * @returns {number}
  */
-function setupProgressInterval(length, bps) {
+function setupProgressInterval(length, bps, onProgress = null) {
     progressPercent = 1;
     updateProgress();
 
@@ -448,6 +471,7 @@ function setupProgressInterval(length, bps) {
         const estimatedProgress = Math.min(95, Math.floor((elapsed / estimatedTimeMs) * 100));
         progressPercent = estimatedProgress;
         updateProgress();
+        if (onProgress) onProgress(progressPercent);
     }, 100);
 }
 
@@ -456,12 +480,14 @@ function setupProgressInterval(length, bps) {
  * @param {number} intervalId
  * @param {number} percent
  * @param {boolean} error
+ * @param {((percent: number) => void)|null} onProgress 额外进度回调（新手向导进度条用），可空
  * @return {void}
  */
-function clearProgressInterval(intervalId, percent, error = false) {
+function clearProgressInterval(intervalId, percent, error = false, onProgress = null) {
     clearInterval(intervalId);
     progressPercent = percent;
     updateProgress(error);
+    if (onProgress) onProgress(progressPercent);
 }
 
 //
@@ -1069,6 +1095,59 @@ function reportFlashStart(firmware) {
 //
 
 /**
+ * 烧录已获取的固件：连接（未连接则请求选择设备）→ 擦除写入 → 重启断开。
+ * 主界面 flash() 与新手向导共用的核心烧录流程。
+ * 调用方负责提前置 busy = true（本函数 finally 中释放）。
+ * @param {FirmwareData} firmware
+ * @param {((percent: number) => void)|null} onProgress 额外进度回调（向导进度条用），可空
+ * @returns {Promise<{ok: boolean, connectFailed: boolean}>} ok = 是否烧录成功并已重启
+ */
+async function burnFirmware(firmware, onProgress = null) {
+    // 1. 连接设备（未连接则先请求选择设备）
+    if (!(await checkAndTryConnect())) {
+        busy = false;
+        updateUi();
+        return { ok: false, connectFailed: true };
+    }
+
+    // 2. 擦除 + 写入（进度条 + 预计耗时）
+    updateStatus('正在烧录…');
+    const progressInterval = setupProgressInterval(firmware.data.length, FLASH_SPEED, onProgress);
+    const timeoutMs = calcTimeout(firmware.data.length, FLASH_SPEED);
+
+    try {
+        const firmwareLabel = firmware.version || `[${firmware.sha256Short}]`;
+        logActivity(`正在烧录 ${firmwareLabel}（${formatBytes(firmware.data.length)}）…`, 'info');
+        await withTimeout(
+            async () => picoboot.flashEraseAndWrite(firmware.address, firmware.data),
+            timeoutMs,
+            '烧录固件'
+        );
+
+        clearProgressInterval(progressInterval, 100, false, onProgress);
+
+        logActivity('烧录成功', 'success');
+        updateStatus('烧录完成');
+
+        // 3. 烧录成功后自动重启设备
+        await rebootAndDisconnect();
+        return { ok: true, connectFailed: false };
+    } catch (error) {
+        clearProgressInterval(progressInterval, 100, true, onProgress);
+        logActivity(`烧录失败：${error.message}`, 'error');
+        if (await tryRecover()) {
+            updateStatus('烧录失败');
+        } else {
+            updateStatus('烧录失败（已断开）');
+        }
+        return { ok: false, connectFailed: false };
+    } finally {
+        busy = false;
+        updateUi();
+    }
+}
+
+/**
  * 烧录流程：每次点击都先重新拉取固件，再连接设备并烧录，成功后自动重启。
  * @returns {Promise<void>}
  */
@@ -1095,48 +1174,8 @@ async function flash() {
     // 2. 上报本次烧录（此时固件信息已可用；上报失败不影响烧录）
     reportFlashStart(firmware);
 
-    // 3. 连接设备（未连接则先请求选择设备）
-    if (!(await checkAndTryConnect())) {
-        busy = false;
-        updateUi();
-        return;
-    }
-
-    // 4. 烧录
-    updateStatus('正在烧录…');
-
-    // 初始化进度条并计算预计耗时
-    const progressInterval = setupProgressInterval(firmware.data.length, FLASH_SPEED);
-    const timeoutMs = calcTimeout(firmware.data.length, FLASH_SPEED);
-
-    try {
-        const firmwareLabel = firmware.version || `[${firmware.sha256Short}]`;
-        logActivity(`正在烧录 ${firmwareLabel}（${formatBytes(firmware.data.length)}）…`, 'info');
-        await withTimeout(
-            async () => picoboot.flashEraseAndWrite(firmware.address, firmware.data),
-            timeoutMs,
-            '烧录固件'
-        );
-
-        clearProgressInterval(progressInterval, 100);
-
-        logActivity('烧录成功', 'success');
-        updateStatus('烧录完成');
-
-        // 烧录成功后自动重启设备
-        await rebootAndDisconnect();
-    } catch (error) {
-        clearProgressInterval(progressInterval, 100, true);
-        logActivity(`烧录失败：${error.message}`, 'error');
-        if (await tryRecover()) {
-            updateStatus('烧录失败');
-        } else {
-            updateStatus('烧录失败（已断开）');
-        }
-    } finally {
-        busy = false;
-        updateUi();
-    }
+    // 3. 连接设备并烧录
+    await burnFirmware(firmware);
 }
 
 //
@@ -1666,6 +1705,45 @@ modalCloseBtn.addEventListener('click', () => {
 // 点遮罩空白处也可关闭（点卡片本身不关）
 webusbModal.addEventListener('click', (e) => {
     if (e.target === webusbModal) hideWebusbModal();
+});
+
+//
+// 新手引导
+//
+
+/**
+ * 向导专用烧录入口：复用统计上报与核心烧录流程（burnFirmware），
+ * 仅额外处理 busy 冲突——主界面正在操作时直接返回失败。
+ * @param {FirmwareData} firmware
+ * @param {(percent: number) => void} onProgress
+ * @returns {Promise<{ok: boolean, connectFailed: boolean}>}
+ */
+async function wizardBurn(firmware, onProgress) {
+    if (busy) {
+        console.log('向导请求烧录时有主界面操作正在进行，已拒绝');
+        return { ok: false, connectFailed: false };
+    }
+
+    busy = true;
+    updateUi();
+    reportFlashStart(firmware);
+    return burnFirmware(firmware, onProgress);
+}
+
+// 把底层操作注入向导：向导只做步骤编排，所有设备/下载/烧录动作与主界面同源
+initWizard({
+    hasWebUsb: 'usb' in navigator,
+    connect: async () => connect(),
+    connected: () => connected(),
+    getTargetInfo: () => getTargetInfo(),
+    setChannel: (channel) => setFirmwareChannel(/** @type {'stable'|'stable:pico2w'|'stable:waveshare_pw'|'latest'} */ (channel)),
+    getChannel: () => firmwareChannel,
+    channelLabel: () => channelLabel(),
+    fetchStableVersion: async () => fetchFirmwareVersion(),
+    fetchFirmware: async () => fetchFirmwareData(),
+    downloadFirmwareFile: async () => downloadFirmwareFile(),
+    burn: async (firmware, onProgress) => wizardBurn(firmware, onProgress),
+    log: (message, type) => logActivity(message, type),
 });
 
 //
