@@ -1163,6 +1163,19 @@ body {
     display: none;
 }
 
+/* 主界面里指向引导模式的入口提示（连接设备卡片内） */
+.wizard-entry-hint {
+    margin: 12px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.wizard-entry-hint .wizard-linklike {
+    padding: 0;
+    font-size: inherit;
+    vertical-align: baseline;
+}
+
 /* 加载转圈 */
 .wizard-spinner {
     flex: none;

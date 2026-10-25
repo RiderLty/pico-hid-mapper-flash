@@ -913,11 +913,12 @@ export function initWizard(injected) {
         closeWizard();
     });
 
-    // 主界面入口按钮
-    const openBtn = /** @type {HTMLButtonElement|null} */ (document.getElementById('wizardBtn'));
-    openBtn?.addEventListener('click', () => {
-        openWizard();
-    });
+    // 主界面入口按钮：头部「新手引导」按钮 + 连接设备卡片中的引导链接（data-open-wizard）
+    for (const el of document.querySelectorAll('[data-open-wizard]')) {
+        el.addEventListener('click', () => {
+            openWizard();
+        });
+    }
 
     // 首次访问自动弹出（已完成/跳过过则不再打扰）
     let seen = false;

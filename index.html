@@ -16,7 +16,7 @@
                 <h1>pico-hid-mapper⚡固件烧录</h1>
                 <p class="subtitle">在线烧录工具 · 支持 Chrome / Edge 的 WebUSB</p>
             </div>
-            <button id="wizardBtn" class="btn btn-secondary" type="button">📖 新手引导</button>
+            <button id="wizardBtn" class="btn btn-secondary" type="button" data-open-wizard>📖 新手引导</button>
         </header>
         <img src="https://statistics.rd5isto.org/i/7d79d52d-3e11-49fb-947d-3016c2c205f9" style="display:none;">
         <section class="card">
@@ -27,6 +27,7 @@
                 <a href="https://pico.rd5isto.org/webhid/" target="_blank" rel="noopener"
                    class="btn btn-success btn-tool-link">上位机控制工具</a>
             </div>
+            <p class="wizard-entry-hint">第一次使用？<button type="button" class="wizard-linklike" data-open-wizard>进入新手引导</button>，分步完成：选板型 → 进烧录模式 → 烧录固件</p>
 
             <dl id="deviceInfoPanel" class="device-info hidden">
                 <div><dt>目标芯片</dt><dd id="deviceTarget">-</dd></div>

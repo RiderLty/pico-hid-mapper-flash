@@ -1170,6 +1170,19 @@ body {
     display: none;
 }
 
+/* 主界面里指向引导模式的入口提示（连接设备卡片内） */
+.wizard-entry-hint {
+    margin: 12px 0 0;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.wizard-entry-hint .wizard-linklike {
+    padding: 0;
+    font-size: inherit;
+    vertical-align: baseline;
+}
+
 /* 加载转圈 */
 .wizard-spinner {
     flex: none;
@@ -1207,7 +1220,7 @@ body {
                 <h1>pico-hid-mapper⚡固件烧录</h1>
                 <p class="subtitle">在线烧录工具 · 支持 Chrome / Edge 的 WebUSB</p>
             </div>
-            <button id="wizardBtn" class="btn btn-secondary" type="button">📖 新手引导</button>
+            <button id="wizardBtn" class="btn btn-secondary" type="button" data-open-wizard>📖 新手引导</button>
         </header>
         <img src="https://statistics.rd5isto.org/i/7d79d52d-3e11-49fb-947d-3016c2c205f9" style="display:none;">
         <section class="card">
@@ -1218,6 +1231,7 @@ body {
                 <a href="https://pico.rd5isto.org/webhid/" target="_blank" rel="noopener"
                    class="btn btn-success btn-tool-link">上位机控制工具</a>
             </div>
+            <p class="wizard-entry-hint">第一次使用？<button type="button" class="wizard-linklike" data-open-wizard>进入新手引导</button>，分步完成：选板型 → 进烧录模式 → 烧录固件</p>
 
             <dl id="deviceInfoPanel" class="device-info hidden">
                 <div><dt>目标芯片</dt><dd id="deviceTarget">-</dd></div>
@@ -4050,11 +4064,12 @@ function initWizard(injected) {
         closeWizard();
     });
 
-    // 主界面入口按钮
-    const openBtn = /** @type {HTMLButtonElement|null} */ (document.getElementById('wizardBtn'));
-    openBtn?.addEventListener('click', () => {
-        openWizard();
-    });
+    // 主界面入口按钮：头部「新手引导」按钮 + 连接设备卡片中的引导链接（data-open-wizard）
+    for (const el of document.querySelectorAll('[data-open-wizard]')) {
+        el.addEventListener('click', () => {
+            openWizard();
+        });
+    }
 
     // 首次访问自动弹出（已完成/跳过过则不再打扰）
     let seen = false;
