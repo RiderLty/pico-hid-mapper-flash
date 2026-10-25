@@ -3319,6 +3319,8 @@ let wizardBusy = false;
 
 /**
  * 按路线展开步骤列表。
+ * 进入烧录模式（BOOTSEL）与浏览器能力无关——不支持 WebUSB 的设备
+ * 同样要按住 BOOT 插线，才能出现可拷固件的 U 盘，因此两条路线共有。
  * @param {string} route
  * @returns {string[]}
  */
@@ -3326,7 +3328,7 @@ function stepsForRoute(route) {
     if (route === 'usb') {
         return ['welcome', 'board', 'bootsel', 'connect', 'channel', 'download', 'flash', 'done'];
     }
-    return ['welcome', 'board', 'channel', 'getfile', 'copyguide', 'done'];
+    return ['welcome', 'board', 'bootsel', 'channel', 'getfile', 'copyguide', 'done'];
 }
 
 /**
