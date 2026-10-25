@@ -181,20 +181,21 @@ function resetState() {
 //
 
 /**
- * 图片占位框：图片缺失（onerror）时只显示占位文案，图片就位后自动展示。
+ * 图片框：三态显示——加载中（转圈动画）、加载成功（图片）、加载失败（占位文案）。
  * @param {string} src 图片路径
- * @param {string} placeholderText 占位文案
+ * @param {string} placeholderText 加载失败时显示的占位文案
  * @returns {string}
  */
 function imgFrame(src, placeholderText) {
-    return `<div class="wizard-img-frame" data-src="${src}">
+    return `<div class="wizard-img-frame is-loading" data-src="${src}">
+        <div class="img-loading"><span class="wizard-spinner"></span>图片加载中…</div>
         <div class="img-placeholder"><span class="img-placeholder-icon">🖼️</span>${placeholderText}</div>
         <img alt="${placeholderText}">
     </div>`;
 }
 
 /**
- * 渲染后挂载图片：加载成功才切换出 <img>，失败保留占位框。
+ * 渲染后挂载图片：加载成功切到图片，失败切到占位文案。
  * @param {HTMLElement} root
  * @return {void}
  */
@@ -202,8 +203,14 @@ function wireImages(root) {
     for (const el of root.querySelectorAll('.wizard-img-frame')) {
         const frame = /** @type {HTMLElement} */ (el);
         const img = /** @type {HTMLImageElement} */ (frame.querySelector('img'));
-        img.addEventListener('load', () => frame.classList.add('has-img'));
-        img.addEventListener('error', () => frame.classList.remove('has-img'));
+        img.addEventListener('load', () => {
+            frame.classList.remove('is-loading', 'is-missing');
+            frame.classList.add('has-img');
+        });
+        img.addEventListener('error', () => {
+            frame.classList.remove('is-loading', 'has-img');
+            frame.classList.add('is-missing');
+        });
         img.src = frame.dataset.src || '';
     }
 }

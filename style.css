@@ -887,22 +887,35 @@ body {
     line-height: 1.5;
 }
 
-/* 板型/BOOTSEL 图片框：图片缺失时显示占位，就位后自动切换 */
+/* 板型/BOOTSEL 图片框：1:1 方形，与实拍图一致。
+   三态：is-loading（转圈）→ has-img（图片）/ is-missing（占位文案） */
 .wizard-img-frame {
     position: relative;
     width: 100%;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 1 / 1;
     margin-bottom: 10px;
     background-color: var(--color-bg-card);
-    border: 1px dashed var(--color-border);
+    border: 1px solid var(--color-border);
     border-radius: 8px;
     overflow: hidden;
+}
+
+.wizard-img-frame .img-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
 }
 
 .wizard-img-frame .img-placeholder {
     position: absolute;
     inset: 0;
-    display: flex;
+    display: none;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -917,12 +930,20 @@ body {
     font-size: 1.6rem;
 }
 
+.wizard-img-frame.is-missing .img-placeholder {
+    display: flex;
+}
+
+.wizard-img-frame.is-missing .img-loading {
+    display: none;
+}
+
 .wizard-img-frame img {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     display: none;
 }
 
@@ -930,6 +951,7 @@ body {
     display: block;
 }
 
+.wizard-img-frame.has-img .img-loading,
 .wizard-img-frame.has-img .img-placeholder {
     display: none;
 }
