@@ -223,6 +223,12 @@ const STEP_DEFS = {
                         只想下载固件文件（U 盘拷贝烧录）？
                     </button>
                 </div>` : ''}
+                <div class="wizard-welcome-skip">
+                    <button id="wizardWelcomeSkip" class="btn btn-secondary" type="button">
+                        跳过向导，直接进入主界面
+                    </button>
+                    <small>清空 flash、配置导出/导入等高级功能都在主界面；跳过后将记住选择，不再自动弹出</small>
+                </div>
             `;
         },
         wire() {
@@ -241,6 +247,13 @@ const STEP_DEFS = {
             } else {
                 nextBtn.textContent = '开始（下载固件烧录）';
             }
+
+            // 跳过 = 直接进主界面；closeWizard 会写入 localStorage，之后不再自动弹出
+            const skip = /** @type {HTMLButtonElement|null} */ (bodyEl.querySelector('#wizardWelcomeSkip'));
+            skip?.addEventListener('click', () => {
+                console.log('向导：欢迎页选择跳过，直接进入主界面');
+                closeWizard();
+            });
         },
         /**
          * @returns {boolean}
