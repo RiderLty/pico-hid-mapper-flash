@@ -1,3 +1,5 @@
-node_modules/
-package-lock.json
-source/
+# macOS
+.DS_Store
+
+# 原始板型照片（仓库只提交 img/ 下的压缩版）
+images/
