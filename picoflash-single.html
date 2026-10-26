@@ -3942,9 +3942,6 @@ function renderDownloadResult() {
     area.innerHTML = `
         <div class="wizard-summary">
             <div><span>版本</span><strong>${fw.version ? 'v' + fw.version : '最新构建'}</strong></div>
-            <div><span>文件</span><strong class="mono">${fw.name}</strong></div>
-            <div><span>大小</span><strong>${formatBytes(fw.origSize)}</strong></div>
-            <div><span>下载速度</span><strong>${formatSpeed(fw.downloadSpeed)}</strong></div>
             <div><span>SHA-256</span><strong class="mono">${fw.sha256Short}</strong></div>
         </div>
         <div class="wizard-note ok">✓ 固件已下载并通过校验</div>
@@ -3964,16 +3961,6 @@ function formatBytes(bytes) {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-}
-
-/**
- * 把网速（字节/秒）格式化为可读字符串。
- * @param {number} bps
- * @returns {string}
- */
-function formatSpeed(bps) {
-    if (bps >= 1024 * 1024) return (bps / (1024 * 1024)).toFixed(2) + ' MB/s';
-    return (bps / 1024).toFixed(1) + ' KB/s';
 }
 
 //
