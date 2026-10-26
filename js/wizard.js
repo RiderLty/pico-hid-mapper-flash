@@ -344,7 +344,7 @@ const STEP_DEFS = {
                 ${imgFrame(board?.bootselImg || '', '按键与插线动图待补充', 'wide')}
                 <ol class="wizard-steps-list">
                     <li>拔掉板子上的 USB 线（如已连接）</li>
-                    <li>按住 <strong>BOOT / BOOTSEL</strong> 键（部分板型需同时按一下 RESET，见上方动图）</li>
+                    <li>按住 <strong>BOOT / BOOTSEL</strong> 键</li>
                     <li>保持按住，插入 USB 线连接到这台设备</li>
                     <li>松开按键 —— 板子进入烧录模式</li>
                 </ol>
@@ -354,7 +354,6 @@ const STEP_DEFS = {
                         <li>确认 USB 线支持<b>数据传输</b>——很多充电线不传数据</li>
                         <li>换一个 USB 口，优先直连，不经集线器/扩展坞</li>
                         <li>尝试先按住 BOOT 再插线，插稳后再松开</li>
-                        <li>部分板型需要按住 BOOT 的同时按一下 RESET，再插线</li>
                     </ul>
                 </details>
             `;
