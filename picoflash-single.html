@@ -3188,14 +3188,17 @@ const STATS_SITE = 'picoflash.org';
 /** localStorage 键：记录已完成/跳过过引导，之后不再自动弹出（可随时从主界面按钮重新打开） */
 const WIZARD_DONE_KEY = 'picoflash-wizard-done';
 
-/** @type {BoardDef[]} 板型列表（图片与 BOOTSEL 动图在 img/ 下，缺失时自动显示占位框） */
+/** 图片资源 CDN 前缀（img/ 目录已整体上传到 CDN，图片变动需手动同步） */
+const IMG_BASE = 'https://1833788059.cdn.123clouddisk.com/1833788059/direct/projects/pico-hid-mapper-flash/img/';
+
+/** @type {BoardDef[]} 板型列表（图片与 BOOTSEL 动图走 CDN，缺失时自动显示占位框） */
 const BOARDS = [
     {
         id: 'default',
         name: 'Waveshare RP2350-USB-C',
         desc: '使用稳定版固件',
-        img: 'img/board-default.jpg',
-        bootselImg: 'img/bootsel-default.webp',
+        img: `${IMG_BASE}board-default.jpg`,
+        bootselImg: `${IMG_BASE}bootsel-default.webp`,
         chip: 'RP2350',
         channels: ['stable', 'latest'],
     },
@@ -3203,8 +3206,8 @@ const BOARDS = [
         id: 'carl',
         name: '定制开发版（基础版）',
         desc: '使用稳定版固件',
-        img: 'img/board-carl.jpg',
-        bootselImg: 'img/bootsel-carl.webp',
+        img: `${IMG_BASE}board-carl.jpg`,
+        bootselImg: `${IMG_BASE}bootsel-carl.webp`,
         chip: 'RP2350',
         channels: ['stable', 'latest'],
     },
@@ -3212,8 +3215,8 @@ const BOARDS = [
         id: 'pico2w',
         name: 'Pico 2 W（蓝牙）',
         desc: '树莓派官方无线板，使用蓝牙变体固件',
-        img: 'img/board-pico2w.jpg',
-        bootselImg: 'img/bootsel-pico2w.webp',
+        img: `${IMG_BASE}board-pico2w.jpg`,
+        bootselImg: `${IMG_BASE}bootsel-pico2w.webp`,
         chip: 'RP2350',
         channels: ['stable:pico2w'],
     },
@@ -3221,8 +3224,8 @@ const BOARDS = [
         id: 'waveshare',
         name: 'Waveshare 无线板（蓝牙）',
         desc: '微雪 RP2350B-Plus W，使用 Waveshare 蓝牙变体固件',
-        img: 'img/board-waveshare.jpg',
-        bootselImg: 'img/bootsel-waveshare.webp',
+        img: `${IMG_BASE}board-waveshare.jpg`,
+        bootselImg: `${IMG_BASE}bootsel-waveshare.webp`,
         chip: 'RP2350',
         channels: ['stable:waveshare_pw'],
     },
