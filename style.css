@@ -816,24 +816,6 @@ body {
     text-align: center;
 }
 
-/* 欢迎页的跳过入口：居中的次要按钮 + 说明小字 */
-.wizard-welcome-skip {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    margin-top: 18px;
-    padding-top: 14px;
-    border-top: 1px dashed var(--color-border);
-}
-
-.wizard-welcome-skip small {
-    color: var(--color-text-secondary);
-    font-size: 0.78rem;
-    text-align: center;
-    line-height: 1.5;
-}
-
 .wizard-linklike {
     padding: 4px 8px;
     border: none;

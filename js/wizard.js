@@ -148,14 +148,15 @@ let wizardBusy = false;
  * 按路线展开步骤列表。
  * 进入烧录模式（BOOTSEL）与浏览器能力无关——不支持 WebUSB 的设备
  * 同样要按住 BOOT 插线，才能出现可拷固件的 U 盘，因此两条路线共有。
+ * 固件渠道不设独立步骤：向导面向新手，选完板型直接锁定该板型的稳定版。
  * @param {string} route
  * @returns {string[]}
  */
 function stepsForRoute(route) {
     if (route === 'usb') {
-        return ['welcome', 'board', 'bootsel', 'connect', 'channel', 'download', 'flash', 'done'];
+        return ['welcome', 'board', 'bootsel', 'connect', 'download', 'flash', 'done'];
     }
-    return ['welcome', 'board', 'bootsel', 'channel', 'getfile', 'copyguide', 'done'];
+    return ['welcome', 'board', 'bootsel', 'getfile', 'copyguide', 'done'];
 }
 
 /**
@@ -248,12 +249,6 @@ const STEP_DEFS = {
                         只想下载固件文件（U 盘拷贝烧录）？
                     </button>
                 </div>` : ''}
-                <div class="wizard-welcome-skip">
-                    <button id="wizardWelcomeSkip" class="btn btn-secondary" type="button">
-                        跳过向导，直接进入主界面
-                    </button>
-                    <small>清空 flash、配置导出/导入等高级功能都在主界面；跳过后将记住选择，不再自动弹出</small>
-                </div>
             `;
         },
         wire() {
@@ -272,13 +267,6 @@ const STEP_DEFS = {
             } else {
                 nextBtn.textContent = '开始（下载固件烧录）';
             }
-
-            // 跳过 = 直接进主界面；closeWizard 会写入 localStorage，之后不再自动弹出
-            const skip = /** @type {HTMLButtonElement|null} */ (bodyEl.querySelector('#wizardWelcomeSkip'));
-            skip?.addEventListener('click', () => {
-                console.log('向导：欢迎页选择跳过，直接进入主界面');
-                closeWizard();
-            });
         },
         /**
          * @returns {boolean}
@@ -333,6 +321,14 @@ const STEP_DEFS = {
             if (!state.board) {
                 alert('请先选择一个板型');
                 return false;
+            }
+            // 渠道不设独立步骤：锁定该板型的稳定版（蓝牙板即对应蓝牙变体）
+            const board = boardById(state.board);
+            if (board) {
+                state.channel = board.channels[0];
+                state.firmware = null;
+                api.setChannel(state.channel);
+                console.log(`向导：按板型自动选择固件渠道 ${state.channel}`);
             }
             return true;
         },
@@ -421,91 +417,13 @@ const STEP_DEFS = {
         },
     },
 
-    channel: {
-        title: '选择固件版本',
-        nextLabel: '下一步',
-        html() {
-            const board = boardById(state.board || '');
-            const channels = board ? board.channels : ['stable'];
-            // 已有选择（或主界面 remembered 的渠道）且在当前板型可选范围内则预选
-            if (!state.channel || !channels.includes(state.channel)) {
-                const remembered = api.getChannel();
-                state.channel = channels.includes(remembered) ? remembered : channels[0];
-            }
-            return `
-                <p class="wizard-lede">为「${board?.name || '你的板子'}」选择固件版本：</p>
-                <div class="wizard-choice-list">
-                    ${channels.map(ch => {
-                        const def = CHANNELS[ch] || { label: ch, desc: '', dot: 'dot-success' };
-                        return `
-                            <button type="button" class="wizard-choice${state.channel === ch ? ' is-selected' : ''}" data-channel="${ch}">
-                                <span class="version-dot ${def.dot}"></span>
-                                <span class="choice-text">
-                                    <strong>${def.label}</strong>
-                                    <small>${def.desc}</small>
-                                </span>
-                                <span class="choice-version" data-version-for="${ch}"></span>
-                            </button>
-                        `;
-                    }).join('')}
-                </div>
-                <div class="wizard-note warn" id="wizardLatestWarn" hidden>
-                    最新版是<b>调试构建</b>：通常只用于作者排查问题或验证新改动。
-                    如果你没有收到「可以刷最新版」的通知（如群内公告），请返回选择<b>稳定版</b>。
-                </div>
-                <p class="wizard-hint" id="wizardVersionHint"></p>
-            `;
-        },
-        wire() {
-            // 选中调试渠道时展示醒目提示
-            const latestWarn = /** @type {HTMLElement|null} */ (bodyEl.querySelector('#wizardLatestWarn'));
-            const updateLatestWarn = () => {
-                if (latestWarn) latestWarn.hidden = state.channel !== 'latest';
-            };
-            updateLatestWarn();
-
-            for (const item of bodyEl.querySelectorAll('.wizard-choice')) {
-                item.addEventListener('click', () => {
-                    state.channel = /** @type {HTMLElement} */ (item).dataset.channel || 'stable';
-                    state.firmware = null; // 换渠道后已下载的固件失效
-                    for (const c of bodyEl.querySelectorAll('.wizard-choice')) {
-                        c.classList.toggle('is-selected', c === item);
-                    }
-                    updateLatestWarn();
-                    console.log(`向导：选择固件渠道 ${state.channel}`);
-                });
-            }
-
-            // 尽力展示远程稳定版版本号（仅日志级信息，失败不打扰）
-            void (async () => {
-                const version = await api.fetchStableVersion();
-                if (!version) return;
-                const hint = /** @type {HTMLElement|null} */ (bodyEl.querySelector('#wizardVersionHint'));
-                if (hint) {
-                    hint.textContent = `远程稳定版当前版本：v${version}（烧录前会自动校验更新）`;
-                }
-            })();
-        },
-        /** @returns {boolean} */
-        onNext() {
-            if (!state.channel) {
-                alert('请先选择固件版本');
-                return false;
-            }
-            if (state.channel !== api.getChannel()) {
-                api.setChannel(state.channel);
-            }
-            return true;
-        },
-    },
-
     download: {
         title: '下载固件',
         nextLabel: '继续',
         html() {
             return `
                 <div id="wizardDownloadArea">
-                    <p class="wizard-status"><span class="wizard-spinner"></span> 正在获取固件（多源竞速下载，完成后自动校验 SHA-256）…</p>
+                    <p class="wizard-status"><span class="wizard-spinner"></span> 正在获取固件…</p>
                 </div>
             `;
         },
@@ -820,7 +738,7 @@ async function fetchFirmwareForWizard() {
     const area = /** @type {HTMLElement|null} */ (bodyEl.querySelector('#wizardDownloadArea'));
     if (!area) return;
 
-    area.innerHTML = '<p class="wizard-status"><span class="wizard-spinner"></span> 正在获取固件（多源竞速下载）…</p>';
+    area.innerHTML = '<p class="wizard-status"><span class="wizard-spinner"></span> 正在获取固件…</p>';
     api.log('向导：开始获取固件', 'info');
 
     try {
