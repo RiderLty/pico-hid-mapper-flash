@@ -951,6 +951,11 @@ body {
     display: block;
 }
 
+/* BOOTSEL 动图为 16:9（640x360），用宽框避免 cover 裁掉两侧动作 */
+.wizard-img-frame.wide {
+    aspect-ratio: 16 / 9;
+}
+
 .wizard-img-frame.has-img .img-loading,
 .wizard-img-frame.has-img .img-placeholder {
     display: none;

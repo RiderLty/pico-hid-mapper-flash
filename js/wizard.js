@@ -188,8 +188,15 @@ function resetState() {
  * @param {string} placeholderText 加载失败时显示的占位文案
  * @returns {string}
  */
-function imgFrame(src, placeholderText) {
-    return `<div class="wizard-img-frame is-loading" data-src="${src}">
+/**
+ * 图片占位框：图片缺失（onerror）时只显示占位文案，图片就位后自动展示。
+ * @param {string} src 图片路径
+ * @param {string} placeholderText 占位文案
+ * @param {string} ratioClass 比例修饰类（'wide' = 16:9，默认正方形 1:1）
+ * @returns {string}
+ */
+function imgFrame(src, placeholderText, ratioClass = '') {
+    return `<div class="wizard-img-frame ${ratioClass} is-loading" data-src="${src}">
         <div class="img-loading"><span class="wizard-spinner"></span>图片加载中…</div>
         <div class="img-placeholder"><span class="img-placeholder-icon">🖼️</span>${placeholderText}</div>
         <img alt="${placeholderText}">
@@ -338,7 +345,7 @@ const STEP_DEFS = {
             const board = boardById(state.board || '');
             return `
                 <p class="wizard-lede">接下来让板子进入<b>烧录模式</b>（BOOTSEL）——这是烧录固件的前提。</p>
-                ${imgFrame(board?.bootselImg || '', '按键与插线动图待补充')}
+                ${imgFrame(board?.bootselImg || '', '按键与插线动图待补充', 'wide')}
                 <ol class="wizard-steps-list">
                     <li>拔掉板子上的 USB 线（如已连接）</li>
                     <li>按住 <strong>BOOT / BOOTSEL</strong> 键（部分板型需同时按一下 RESET，见上方动图）</li>
