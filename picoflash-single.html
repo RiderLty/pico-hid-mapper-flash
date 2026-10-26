@@ -3820,10 +3820,11 @@ const STEP_DEFS = {
             return `
                 <p class="wizard-lede">把下载好的固件文件拷进板子的 U 盘，即可完成烧录：</p>
                 <ol class="wizard-steps-list">
-                    <li>按住 <strong>BOOT / BOOTSEL</strong> 键，插入 USB 线，然后松开（同前面的引导）</li>
-                    <li>打开文件管理器：
+                    <li>打开文件管理器，确认板子的 U 盘已出现：
                         <br>· iPhone / iPad →「文件」App，侧边栏会出现 U 盘
-                        <br>· 电脑 → 出现名为 <span class="mono">RP2350</span>（或 RPI-RP2）的 U 盘</li>
+                        <br>· 电脑 → 名为 <span class="mono">RP2350</span>（或 RPI-RP2）的 U 盘
+                        <br>前面进入烧录模式后一直插着线的话，U 盘应该已经在了</li>
+                    <li>没看到 U 盘？重新按住 <strong>BOOT / BOOTSEL</strong> 插线再松开（同前面动图），U 盘出现后继续</li>
                     <li>把下载的 <span class="mono">.uf2</span> 文件拷贝 / 拖入 U 盘根目录</li>
                     <li>U 盘自动消失、板子重启 = 烧录成功 ✅</li>
                 </ol>
@@ -3831,7 +3832,7 @@ const STEP_DEFS = {
                     <summary>看不到 U 盘？</summary>
                     <ul>
                         <li>确认 USB 线支持数据传输（充电线不行）</li>
-                        <li>重新操作第 1 步：必须先按住 BOOT 再插线</li>
+                        <li>按第 2 步重新进入烧录模式：必须先按住 BOOT 再插线</li>
                         <li>iOS 上需要解锁屏幕后重新插线，并在「文件」App 侧边栏查看</li>
                     </ul>
                 </details>
