@@ -378,7 +378,7 @@ const STEP_DEFS = {
         nextLabel: '下一步',
         html() {
             return `
-                <p class="wizard-lede">点击下方按钮，在弹出的浏览器窗口中选择你的设备（通常显示为 Raspberry Pi）。</p>
+                <p class="wizard-lede">点击下方按钮，在弹出的浏览器窗口中选择你的设备（名称为 <span class="mono">RP2350 BOOT</span>）。</p>
                 <div class="wizard-center">
                     <button id="wizardConnectBtn" class="btn btn-primary btn-flash">连接设备</button>
                 </div>
