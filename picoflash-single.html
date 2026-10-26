@@ -1258,9 +1258,11 @@ body {
     margin: 0;
 }
 
-/* 竖屏截图按比例很高，限宽居中，避免一张图占掉整屏 */
+/* 竖屏截图按比例很高，限宽居中，避免一张图占掉整屏。
+   必须写死 width：只给 max-width 时 auto 外边距会让 figure 收紧到图注文字的宽度。 */
 .wizard-figure:has(.wizard-img-frame.tall) {
-    max-width: 320px;
+    width: 320px;
+    max-width: 100%;
     margin: 0 auto;
 }
 
