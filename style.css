@@ -956,66 +956,6 @@ body {
     display: none;
 }
 
-/* BOOTSEL 演示视频框：16:9，与视频一致；同样三态 + 点击重放 */
-.wizard-video-frame {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    margin-bottom: 10px;
-    background-color: var(--color-bg-card);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.wizard-video-frame video {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: none;
-    cursor: pointer;
-}
-
-.wizard-video-frame.has-video video {
-    display: block;
-}
-
-.wizard-video-frame .img-loading,
-.wizard-video-frame .img-placeholder {
-    position: absolute;
-    inset: 0;
-}
-
-.wizard-video-frame.is-loading .img-loading,
-.wizard-video-frame.is-missing .img-placeholder {
-    visibility: visible;
-}
-
-.wizard-video-frame.has-video .img-loading,
-.wizard-video-frame.has-video .img-placeholder,
-.wizard-video-frame.is-missing .img-loading,
-.wizard-video-frame.is-loading .img-placeholder {
-    visibility: hidden;
-}
-
-/* 「点击重放」角标：播放结束或悬停画面时出现 */
-.video-replay-hint {
-    position: absolute;
-    right: 10px;
-    bottom: 10px;
-    display: none;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 12px;
-    background-color: rgba(0, 0, 0, 0.6);
-    color: #ffffff;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    pointer-events: none;
-}
-
 .video-replay-icon {
     font-size: 0.9rem;
 }
