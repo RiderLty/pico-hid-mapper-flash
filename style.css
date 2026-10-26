@@ -1156,12 +1156,13 @@ body {
     font-size: 2.4rem;
 }
 
-.wizard-done-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 12px;
-    margin-top: 16px;
+.wizard-done-btn {
+    display: block;
+    width: 100%;
+    margin-top: 18px;
+    padding: 13px 18px;
+    font-size: 1.05rem;
+    font-weight: 700;
 }
 
 /* 底部导航：上一步居左，下一步贴右 */
@@ -1181,17 +1182,14 @@ body {
     display: none;
 }
 
-/* 主界面里指向引导模式的入口提示（连接设备卡片内） */
-.wizard-entry-hint {
-    margin: 12px 0 0;
-    color: var(--color-text-secondary);
-    font-size: 0.85rem;
-}
-
-.wizard-entry-hint .wizard-linklike {
-    padding: 0;
-    font-size: inherit;
-    vertical-align: baseline;
+/* 主界面顶部的引导入口：满宽度大按钮，置于标题之下、卡片之上 */
+.wizard-entry-btn {
+    display: block;
+    width: 100%;
+    margin-top: 20px;
+    padding: 13px 18px;
+    font-size: 1.02rem;
+    font-weight: 700;
 }
 
 /* 加载转圈 */

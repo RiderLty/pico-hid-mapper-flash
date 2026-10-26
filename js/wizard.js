@@ -22,9 +22,6 @@
 /** localStorage 键：记录已完成/跳过过引导，之后不再自动弹出（可随时从主界面按钮重新打开） */
 const WIZARD_DONE_KEY = 'picoflash-wizard-done';
 
-/** 上位机控制工具入口（与主界面「连接设备」卡中的外链一致） */
-const TOOL_URL = 'https://pico.rd5isto.org/webhid/';
-
 /** @type {BoardDef[]} 板型列表（图片与 BOOTSEL 动图在 img/ 下，缺失时自动显示占位框） */
 const BOARDS = [
     {
@@ -585,24 +582,13 @@ const STEP_DEFS = {
                 <p class="wizard-lede center">${routeUsb
                     ? '固件烧录完成，设备已自动重启进入新固件。'
                     : '引导完成。固件拷入 U 盘后板子会自动重启，进入新固件。'}</p>
-                <div class="wizard-done-actions">
-                    <a class="btn btn-success" href="${TOOL_URL}" target="_blank" rel="noopener">打开上位机控制工具</a>
-                    <button id="wizardCloseBtn" class="btn btn-primary" type="button">进入主界面</button>
-                    <button id="wizardAgainBtn" class="btn btn-secondary" type="button">再引导一块</button>
-                </div>
-                <p class="wizard-hint">「清空 flash」「配置导出/导入」等高级操作在主界面中。</p>
+                <button id="wizardCloseBtn" class="btn btn-success wizard-done-btn" type="button">完成，进入主界面</button>
             `;
         },
         wire() {
             const close = /** @type {HTMLButtonElement|null} */ (bodyEl.querySelector('#wizardCloseBtn'));
             close?.addEventListener('click', () => {
                 closeWizard();
-            });
-            const again = /** @type {HTMLButtonElement|null} */ (bodyEl.querySelector('#wizardAgainBtn'));
-            again?.addEventListener('click', () => {
-                resetState();
-                console.log('向导：重新开始一轮引导');
-                renderStep();
             });
         },
     },
