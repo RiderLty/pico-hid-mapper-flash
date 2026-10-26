@@ -1165,6 +1165,119 @@ body {
     font-weight: 700;
 }
 
+/* 完成页：进入配置后台的平台引导（电脑 / 安卓 / iPadOS / iOS） */
+.wizard-backend {
+    margin-top: 18px;
+    padding: 14px;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+}
+
+.wizard-backend-title {
+    margin: 0 0 10px;
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+
+/* 平台切换：三等分按钮，选中项用强调色描边 */
+.wizard-tabbar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.wizard-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 4px;
+    background-color: var(--color-bg-card);
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text-secondary);
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.wizard-tab:hover {
+    border-color: var(--color-accent);
+}
+
+.wizard-tab.is-active {
+    border-color: var(--color-accent);
+    color: var(--color-text-primary);
+    font-weight: 700;
+}
+
+.wizard-tab .tab-icon {
+    font-size: 0.95rem;
+}
+
+.wizard-backend-panel .wizard-steps-list {
+    margin-top: 0;
+}
+
+/* 平台引导里的外链：与正文同色、加下划线，避免浏览器默认蓝色在深色底上刺眼 */
+.wizard-link {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    word-break: break-all;
+}
+
+.wizard-link:hover {
+    filter: brightness(1.2);
+}
+
+.wizard-backend-panel .btn {
+    text-decoration: none;
+}
+
+/* 截图组：宽屏两列并排，窄屏改单列，避免手机上看不清截图细节 */
+.wizard-img-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin: 14px 0 0;
+}
+
+@media (max-width: 480px) {
+    .wizard-img-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.wizard-figure {
+    margin: 0;
+}
+
+.wizard-figure figcaption {
+    color: var(--color-text-secondary);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+/* 系统设置截图按原始比例展示，不裁剪 */
+.wizard-img-frame.landscape {
+    aspect-ratio: 2388 / 1668;
+}
+
+.wizard-img-frame.tall {
+    aspect-ratio: 1260 / 2736;
+}
+
+.wizard-img-frame.landscape img,
+.wizard-img-frame.tall img {
+    object-fit: contain;
+}
+
 /* 底部导航：上一步居左，下一步贴右 */
 .wizard-footer {
     display: flex;

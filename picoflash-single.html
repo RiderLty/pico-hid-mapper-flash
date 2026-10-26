@@ -1172,6 +1172,119 @@ body {
     font-weight: 700;
 }
 
+/* 完成页：进入配置后台的平台引导（电脑 / 安卓 / iPadOS / iOS） */
+.wizard-backend {
+    margin-top: 18px;
+    padding: 14px;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+}
+
+.wizard-backend-title {
+    margin: 0 0 10px;
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+
+/* 平台切换：三等分按钮，选中项用强调色描边 */
+.wizard-tabbar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.wizard-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 4px;
+    background-color: var(--color-bg-card);
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text-secondary);
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.wizard-tab:hover {
+    border-color: var(--color-accent);
+}
+
+.wizard-tab.is-active {
+    border-color: var(--color-accent);
+    color: var(--color-text-primary);
+    font-weight: 700;
+}
+
+.wizard-tab .tab-icon {
+    font-size: 0.95rem;
+}
+
+.wizard-backend-panel .wizard-steps-list {
+    margin-top: 0;
+}
+
+/* 平台引导里的外链：与正文同色、加下划线，避免浏览器默认蓝色在深色底上刺眼 */
+.wizard-link {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    word-break: break-all;
+}
+
+.wizard-link:hover {
+    filter: brightness(1.2);
+}
+
+.wizard-backend-panel .btn {
+    text-decoration: none;
+}
+
+/* 截图组：宽屏两列并排，窄屏改单列，避免手机上看不清截图细节 */
+.wizard-img-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin: 14px 0 0;
+}
+
+@media (max-width: 480px) {
+    .wizard-img-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.wizard-figure {
+    margin: 0;
+}
+
+.wizard-figure figcaption {
+    color: var(--color-text-secondary);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+/* 系统设置截图按原始比例展示，不裁剪 */
+.wizard-img-frame.landscape {
+    aspect-ratio: 2388 / 1668;
+}
+
+.wizard-img-frame.tall {
+    aspect-ratio: 1260 / 2736;
+}
+
+.wizard-img-frame.landscape img,
+.wizard-img-frame.tall img {
+    object-fit: contain;
+}
+
 /* 底部导航：上一步居左，下一步贴右 */
 .wizard-footer {
     display: flex;
@@ -3231,6 +3344,95 @@ const BOARDS = [
     },
 ];
 
+/** 文档站图片 CDN 前缀（iOS / iPadOS 系统设置截图，复用 pico-hid-mapper-doc 仓库的 ios/ 目录） */
+const DOC_IMG_BASE = 'https://1833788059.cdn.123clouddisk.com/1833788059/direct/projects/pico-hid-mapper-doc/ios/';
+
+/**
+ * 完成页「如何进入配置后台」引导，按操作设备区分访问路径（电脑不适用：后台只从手机/平板访问）：
+ *   安卓 → vPointer 提供虚拟光标 + 端口转发，浏览器访问 127.0.0.1:8000
+ *   iPadOS / iOS → 系统原生鼠标支持，改完设置后 Safari 直接访问 192.168.73.1
+ * @type {{id: string, label: string, icon: string, html: () => string}[]}
+ */
+const BACKEND_GUIDES = [
+    {
+        id: 'android',
+        label: '安卓',
+        icon: '🤖',
+        html() {
+            return `
+                <ol class="wizard-steps-list">
+                    <li>下载并安装 <strong>vPointer</strong>：
+                        <div class="wizard-center">
+                            <a class="btn btn-primary" href="https://github.com/RiderLty/vPointer/releases/latest"
+                               target="_blank" rel="noopener">⬇ 下载 vPointer 最新版</a>
+                        </div>
+                    </li>
+                    <li>打开 vPointer，把 <strong>虚拟光标</strong> 和 <strong>端口转发</strong> 两个功能都打开</li>
+                    <li>按提示允许<b>悬浮窗</b>权限，并关闭电池优化 / 后台限制，避免 App 被系统杀掉</li>
+                    <li>用数据线把 Pico 接到手机，确认手机已识别 Pico 的 USB 网卡，且 vPointer 两个功能都在运行</li>
+                    <li>用 <strong>Chrome 或 Edge</strong> 打开 <a class="wizard-link mono" href="http://127.0.0.1:8000"
+                        target="_blank" rel="noopener">http://127.0.0.1:8000</a> 即可进入配置后台</li>
+                </ol>
+                <div class="wizard-note warn">
+                    安卓限制应用直接访问 Pico 的 USB 网卡，浏览器打不开 <span class="mono">192.168.73.1</span>；
+                    vPointer 的端口转发会把后台映射到本机 <span class="mono">127.0.0.1:8000</span>，所以必须用它访问。
+                    <br>不想用 vPointer 也可以<b>断开移动数据与 Wi-Fi</b>，再用浏览器直接打开
+                    <span class="mono">192.168.73.1</span>。
+                </div>
+            `;
+        },
+    },
+    {
+        id: 'ipados',
+        label: 'iPadOS',
+        icon: '📱',
+        html() {
+            return `
+                <ol class="wizard-steps-list">
+                    <li>设置 → 辅助功能 → <strong>缩放</strong>：打开</li>
+                    <li>设置 → <strong>多任务与手势</strong>：选择「全屏幕 App」，
+                        关闭「四指与五指 App 切换」和「高效手势」</li>
+                    <li>用数据线把 Pico 接到 iPad</li>
+                    <li>用系统自带的 <b>Safari</b> 打开 <a class="wizard-link mono" href="http://192.168.73.1"
+                        target="_blank" rel="noopener">http://192.168.73.1</a></li>
+                </ol>
+                <div class="wizard-img-grid">
+                    ${imgFigure(`${DOC_IMG_BASE}ipados-zoom.jpg`, '设置 → 辅助功能 → 缩放：打开', 'landscape')}
+                    ${imgFigure(`${DOC_IMG_BASE}ipados-gestures.jpg`, '设置 → 多任务与手势：全屏幕 App，关闭两处手势', 'landscape')}
+                </div>
+                <div class="wizard-note warn">
+                    iPadOS 不能自动检测屏幕方向：画面方向不对时，在后台的「参数配置 → 旋转」里调整
+                    「屏幕旋转方向」。
+                </div>
+            `;
+        },
+    },
+    {
+        id: 'ios',
+        label: 'iOS',
+        icon: '📲',
+        html() {
+            return `
+                <ol class="wizard-steps-list">
+                    <li>设置 → 辅助功能 → <strong>缩放</strong>：打开</li>
+                    <li>设置 → 辅助功能 → 触控 → <strong>辅助触控</strong>：打开</li>
+                    <li>把 Pico 接到 iPhone，在「辅助触控 → 指针设备 → 设备」里选择它</li>
+                    <li>用系统自带的 <b>Safari</b> 打开 <a class="wizard-link mono" href="http://192.168.73.1"
+                        target="_blank" rel="noopener">http://192.168.73.1</a></li>
+                </ol>
+                <div class="wizard-img-grid">
+                    ${imgFigure(`${DOC_IMG_BASE}ios-zoom.png`, '设置 → 辅助功能 → 缩放：打开', 'tall')}
+                    ${imgFigure(`${DOC_IMG_BASE}ios-assistive-touch.png`, '设置 → 辅助功能 → 触控 → 辅助触控：打开', 'tall')}
+                </div>
+                <div class="wizard-note warn">
+                    iOS 不能自动检测方向：画面方向或光标方向不对时，在后台的「参数配置 → 旋转」里
+                    分别调整「屏幕旋转方向」和「鼠标旋转方向」。
+                </div>
+            `;
+        },
+    },
+];
+
 /** @type {Object<string, ChannelDef>} 渠道展示文案（key 与主界面版本选择的 value 一致） */
 const CHANNELS = {
     'stable': {
@@ -3301,6 +3503,8 @@ const state = {
     firmware: null,
     /** @type {string|null} 连接后识别到的目标芯片（如 'RP2350'） */
     target: null,
+    /** @type {string|null} 完成页选中的后台访问引导（'android' / 'ipados' / 'ios'） */
+    backendGuide: null,
 };
 
 /** 当前路线的步骤 id 列表（welcome 之后按路线展开） */
@@ -3341,6 +3545,7 @@ function resetState() {
     state.channel = null;
     state.firmware = null;
     state.target = null;
+    state.backendGuide = null;
     stepList = ['welcome'];
     stepIdx = 0;
 }
@@ -3369,6 +3574,21 @@ function imgFrame(src, placeholderText, ratioClass = '') {
         <img alt="${placeholderText}">
     </div>`;
 }
+
+/**
+ * 带说明文字的图片框（用于 iOS / iPadOS 系统设置截图）。
+ * @param {string} src 图片路径
+ * @param {string} caption 图片下方说明
+ * @param {string} ratioClass 比例修饰类：'landscape'（横屏截图）/ 'tall'（竖屏截图）
+ * @returns {string}
+ */
+function imgFigure(src, caption, ratioClass = '') {
+    return `<figure class="wizard-figure">
+        ${imgFrame(src, '截图待补充', ratioClass)}
+        <figcaption>${caption}</figcaption>
+    </figure>`;
+}
+
 
 /**
  * 渲染后挂载图片：加载成功切到图片，失败切到占位文案。
@@ -3746,15 +3966,40 @@ const STEP_DEFS = {
         hideNext: true,
         html() {
             const routeUsb = state.route === 'usb';
+            const active = state.backendGuide || detectBackendGuide();
             return `
                 <div class="wizard-done">🎉</div>
                 <p class="wizard-lede center">${routeUsb
                     ? '固件烧录完成，设备已自动重启进入新固件。'
                     : '引导完成。固件拷入 U 盘后板子会自动重启，进入新固件。'}</p>
+                <div class="wizard-backend">
+                    <p class="wizard-backend-title">接下来怎么进入配置后台？</p>
+                    <div class="wizard-tabbar" role="tablist">
+                        ${backendTabsHtml(active)}
+                    </div>
+                    <div id="wizardBackendPanel" class="wizard-backend-panel"></div>
+                </div>
                 <button id="wizardCloseBtn" class="btn btn-success wizard-done-btn" type="button">完成，进入主界面</button>
             `;
         },
         wire() {
+            renderBackendPanel();
+
+            for (const tab of bodyEl.querySelectorAll('.wizard-tab')) {
+                tab.addEventListener('click', () => {
+                    const id = /** @type {HTMLElement} */ (tab).dataset.guide || '';
+                    if (state.backendGuide === id) return;
+                    state.backendGuide = id;
+                    for (const t of bodyEl.querySelectorAll('.wizard-tab')) {
+                        const on = t === tab;
+                        t.classList.toggle('is-active', on);
+                        t.setAttribute('aria-selected', on ? 'true' : 'false');
+                    }
+                    console.log(`向导：完成页切换到「${id}」后台访问引导`);
+                    renderBackendPanel();
+                });
+            }
+
             const close = /** @type {HTMLButtonElement|null} */ (bodyEl.querySelector('#wizardCloseBtn'));
             close?.addEventListener('click', () => {
                 closeWizard();
@@ -3762,6 +4007,50 @@ const STEP_DEFS = {
         },
     },
 };
+
+/**
+ * 完成页的平台切换按钮组（后台只能从手机 / 平板访问，不含电脑）。
+ * @param {string} active 当前选中的引导 id
+ * @returns {string}
+ */
+function backendTabsHtml(active) {
+    return BACKEND_GUIDES.map(g => `
+        <button type="button" role="tab" class="wizard-tab${active === g.id ? ' is-active' : ''}"
+                data-guide="${g.id}" aria-selected="${active === g.id ? 'true' : 'false'}">
+            <span class="tab-icon">${g.icon}</span>${g.label}
+        </button>
+    `).join('');
+}
+
+/**
+ * 猜测当前设备平台，用于完成页默认展开对应的后台访问引导。
+ * 向导里两条路线都可能由手机/平板发起（路线 B 就是给不支持 WebUSB 的 iOS 用的），
+ * 因此按 UA 选择比固定某一个平台更贴近用户当下要的操作。
+ * 电脑端无法访问后台，识别不出来时退回安卓（最常见的使用场景）。
+ * @returns {string} 'android' | 'ipados' | 'ios'
+ */
+function detectBackendGuide() {
+    const ua = navigator.userAgent || '';
+    if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ipados';
+    if (/iPhone|iPod/.test(ua)) return 'ios';
+    if (/Android/.test(ua)) return 'android';
+    return 'android';
+}
+
+/**
+ * 渲染完成页当前平台的后台访问引导正文。
+ * @return {void}
+ */
+function renderBackendPanel() {
+    const panel = /** @type {HTMLElement|null} */ (bodyEl.querySelector('#wizardBackendPanel'));
+    if (!panel) return;
+
+    if (!state.backendGuide) state.backendGuide = detectBackendGuide();
+    const guide = BACKEND_GUIDES.find(g => g.id === state.backendGuide) || BACKEND_GUIDES[0];
+
+    panel.innerHTML = guide.html();
+    wireImages(panel);
+}
 
 //
 // 渲染与导航
