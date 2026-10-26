@@ -554,7 +554,7 @@ const STEP_DEFS = {
                         <br>· iPhone / iPad →「文件」App，侧边栏会出现 U 盘
                         <br>· 电脑 → 名为 <span class="mono">RP2350</span>（或 RPI-RP2）的 U 盘
                         <br>前面进入烧录模式后一直插着线的话，U 盘应该已经在了</li>
-                    <li>没看到 U 盘？重新按住 <strong>BOOT / BOOTSEL</strong> 插线再松开（同前面动图），U 盘出现后继续</li>
+                    <li>没看到 U 盘？重新按住 <strong>BOOT / BOOTSEL</strong> 插线再松开，U 盘出现后继续</li>
                     <li>把下载的 <span class="mono">.uf2</span> 文件拷贝 / 拖入 U 盘根目录</li>
                     <li>U 盘自动消失、板子重启 = 烧录成功 ✅</li>
                 </ol>
