@@ -16,7 +16,7 @@
 //
 
 /** @typedef {{name: string, address: number, data: Uint8Array, origSize: number, fileType: string, downloadSpeed: number, sha256Short: string, hash: string, version: string|null}} FirmwareData */
-/** @typedef {{id: string, name: string, desc: string, img: string, bootselImg: string, chip: string, channels: string[]}} BoardDef */
+/** @typedef {{id: string, name: string, desc: string, img: string, bootselVideo: string, chip: string, channels: string[]}} BoardDef */
 /** @typedef {{label: string, desc: string, dot: string}} ChannelDef */
 
 /** localStorage 键：记录已完成/跳过过引导，之后不再自动弹出（可随时从主界面按钮重新打开） */
@@ -32,7 +32,7 @@ const BOARDS = [
         name: 'Waveshare RP2350-USB-C',
         desc: '使用稳定版固件',
         img: 'img/board-default.jpg',
-        bootselImg: 'img/bootsel-default.webp',
+        bootselVideo: 'img/bootsel-default.mp4',
         chip: 'RP2350',
         channels: ['stable', 'latest'],
     },
@@ -41,7 +41,7 @@ const BOARDS = [
         name: '定制开发版（基础版）',
         desc: '使用稳定版固件',
         img: 'img/board-carl.jpg',
-        bootselImg: 'img/bootsel-carl.webp',
+        bootselVideo: 'img/bootsel-carl.mp4',
         chip: 'RP2350',
         channels: ['stable', 'latest'],
     },
@@ -50,7 +50,7 @@ const BOARDS = [
         name: 'Pico 2 W（蓝牙）',
         desc: '树莓派官方无线板，使用蓝牙变体固件',
         img: 'img/board-pico2w.jpg',
-        bootselImg: 'img/bootsel-pico2w.webp',
+        bootselVideo: 'img/bootsel-pico2w.mp4',
         chip: 'RP2350',
         channels: ['stable:pico2w'],
     },
@@ -59,7 +59,7 @@ const BOARDS = [
         name: 'Waveshare 无线板（蓝牙）',
         desc: '微雪 RP2350B-Plus W，使用 Waveshare 蓝牙变体固件',
         img: 'img/board-waveshare.jpg',
-        bootselImg: 'img/bootsel-waveshare.webp',
+        bootselVideo: 'img/bootsel-waveshare.mp4',
         chip: 'RP2350',
         channels: ['stable:waveshare_pw'],
     },
@@ -217,6 +217,57 @@ function wireImages(root) {
     }
 }
 
+/**
+ * 视频框：进入 BOOTSEL 步骤的演示视频（16:9）。
+ * 三态与图片框一致：加载中（转圈）→ 可播放（视频）/ 加载失败（占位文案）。
+ * 视频自动播放；播放结束后点击画面即可重放。
+ * @param {string} src 视频路径
+ * @param {string} placeholderText 加载失败时显示的占位文案
+ * @returns {string}
+ */
+function videoFrame(src, placeholderText) {
+    return `<div class="wizard-video-frame is-loading" data-src="${src}">
+        <div class="img-loading"><span class="wizard-spinner"></span>视频加载中…</div>
+        <div class="img-placeholder"><span class="img-placeholder-icon">🖼️</span>${placeholderText}</div>
+        <video muted playsinline preload="auto"></video>
+        <div class="video-replay-hint"><span class="video-replay-icon">↻</span> 点击重放</div>
+    </div>`;
+}
+
+/**
+ * 渲染后挂载视频：自动播放，加载失败显示占位，点击画面重放。
+ * @param {HTMLElement} root
+ * @return {void}
+ */
+function wireVideos(root) {
+    for (const el of root.querySelectorAll('.wizard-video-frame')) {
+        const frame = /** @type {HTMLElement} */ (el);
+        const video = /** @type {HTMLVideoElement} */ (frame.querySelector('video'));
+
+        video.addEventListener('canplay', () => {
+            frame.classList.remove('is-loading', 'is-missing');
+            frame.classList.add('has-video');
+        });
+        video.addEventListener('error', () => {
+            frame.classList.remove('is-loading', 'has-video');
+            frame.classList.add('is-missing');
+        });
+
+        // 播放结束：显示「点击重放」角标；点击画面随时重放
+        video.addEventListener('ended', () => frame.classList.add('is-ended'));
+        video.addEventListener('play', () => frame.classList.remove('is-ended'));
+        frame.addEventListener('click', () => {
+            if (!frame.classList.contains('has-video')) return;
+            video.currentTime = 0;
+            void video.play();
+        });
+
+        video.src = frame.dataset.src || '';
+        // 静音视频允许自动播放；catch 兜底自动播放被拦截的情况（用户点画面即可开始）
+        video.play().catch(() => console.log('向导：演示视频自动播放被拦截，等待用户点击'));
+    }
+}
+
 //
 // 各步骤定义
 //
@@ -338,10 +389,10 @@ const STEP_DEFS = {
             const board = boardById(state.board || '');
             return `
                 <p class="wizard-lede">接下来让板子进入<b>烧录模式</b>（BOOTSEL）——这是烧录固件的前提。</p>
-                ${imgFrame(board?.bootselImg || '', '按键与插线动图待补充')}
+                ${videoFrame(board?.bootselVideo || '', '按键与插线演示视频待补充')}
                 <ol class="wizard-steps-list">
                     <li>拔掉板子上的 USB 线（如已连接）</li>
-                    <li>按住 <strong>BOOT / BOOTSEL</strong> 键（部分板型需同时按一下 RESET，见上图）</li>
+                    <li>按住 <strong>BOOT / BOOTSEL</strong> 键（部分板型需同时按一下 RESET，见上方视频）</li>
                     <li>保持按住，插入 USB 线连接到这台设备</li>
                     <li>松开按键 —— 板子进入烧录模式</li>
                 </ol>
@@ -357,7 +408,7 @@ const STEP_DEFS = {
             `;
         },
         wire() {
-            wireImages(bodyEl);
+            wireVideos(bodyEl);
         },
         /** @returns {boolean} */
         onNext() {
