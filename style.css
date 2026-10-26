@@ -1239,22 +1239,22 @@ body {
     text-decoration: none;
 }
 
-/* 截图组：宽屏两列并排，窄屏改单列，避免手机上看不清截图细节 */
+/* 截图组：一张一行、占满正文宽度，保证设置项看得清 */
 .wizard-img-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
+    grid-template-columns: 1fr;
+    gap: 14px;
     margin: 14px 0 0;
-}
-
-@media (max-width: 480px) {
-    .wizard-img-grid {
-        grid-template-columns: 1fr;
-    }
 }
 
 .wizard-figure {
     margin: 0;
+}
+
+/* 竖屏截图按比例很高，限宽居中，避免一张图占掉整屏 */
+.wizard-figure:has(.wizard-img-frame.tall) {
+    max-width: 320px;
+    margin: 0 auto;
 }
 
 .wizard-figure figcaption {

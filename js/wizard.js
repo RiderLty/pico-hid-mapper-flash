@@ -687,7 +687,6 @@ const STEP_DEFS = {
         hideNext: true,
         html() {
             const routeUsb = state.route === 'usb';
-            const active = state.backendGuide || detectBackendGuide();
             return `
                 <div class="wizard-done">🎉</div>
                 <p class="wizard-lede center">${routeUsb
@@ -696,7 +695,7 @@ const STEP_DEFS = {
                 <div class="wizard-backend">
                     <p class="wizard-backend-title">接下来怎么进入配置后台？</p>
                     <div class="wizard-tabbar" role="tablist">
-                        ${backendTabsHtml(active)}
+                        ${backendTabsHtml(state.backendGuide)}
                     </div>
                     <div id="wizardBackendPanel" class="wizard-backend-panel"></div>
                 </div>
@@ -731,7 +730,7 @@ const STEP_DEFS = {
 
 /**
  * 完成页的平台切换按钮组（后台只能从手机 / 平板访问，不含电脑）。
- * @param {string} active 当前选中的引导 id
+ * @param {string|null} active 当前选中的引导 id；未选择时为 null
  * @returns {string}
  */
 function backendTabsHtml(active) {
@@ -744,30 +743,18 @@ function backendTabsHtml(active) {
 }
 
 /**
- * 猜测当前设备平台，用于完成页默认展开对应的后台访问引导。
- * 向导里两条路线都可能由手机/平板发起（路线 B 就是给不支持 WebUSB 的 iOS 用的），
- * 因此按 UA 选择比固定某一个平台更贴近用户当下要的操作。
- * 电脑端无法访问后台，识别不出来时退回安卓（最常见的使用场景）。
- * @returns {string} 'android' | 'ipados' | 'ios'
- */
-function detectBackendGuide() {
-    const ua = navigator.userAgent || '';
-    if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ipados';
-    if (/iPhone|iPod/.test(ua)) return 'ios';
-    if (/Android/.test(ua)) return 'android';
-    return 'android';
-}
-
-/**
- * 渲染完成页当前平台的后台访问引导正文。
+ * 渲染完成页当前平台的后台访问引导正文；未选择平台时只显示提示。
  * @return {void}
  */
 function renderBackendPanel() {
     const panel = /** @type {HTMLElement|null} */ (bodyEl.querySelector('#wizardBackendPanel'));
     if (!panel) return;
 
-    if (!state.backendGuide) state.backendGuide = detectBackendGuide();
-    const guide = BACKEND_GUIDES.find(g => g.id === state.backendGuide) || BACKEND_GUIDES[0];
+    const guide = BACKEND_GUIDES.find(g => g.id === state.backendGuide);
+    if (!guide) {
+        panel.innerHTML = '<p class="wizard-hint">选择你在用的设备，查看对应的操作步骤。</p>';
+        return;
+    }
 
     panel.innerHTML = guide.html();
     wireImages(panel);
