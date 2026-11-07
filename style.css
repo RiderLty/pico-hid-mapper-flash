@@ -94,7 +94,7 @@ body {
     font-weight: 600;
 }
 
-/* 链接型按钮：贴住行右边缘（如上位机控制工具外链） */
+/* 链接型按钮：贴住行右边缘（如浏览器控制工具外链） */
 .btn-tool-link {
     margin-left: auto;
     text-decoration: none;

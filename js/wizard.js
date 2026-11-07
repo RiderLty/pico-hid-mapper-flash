@@ -30,7 +30,7 @@ const BOARDS = [
     {
         id: 'default',
         name: 'Waveshare RP2350-USB-C',
-        desc: '使用稳定版固件',
+        desc: '基础版',
         img: `${IMG_BASE}board-default.jpg`,
         bootselImg: `${IMG_BASE}bootsel-default.webp`,
         chip: 'RP2350',
@@ -39,7 +39,7 @@ const BOARDS = [
     {
         id: 'carl',
         name: '定制开发版（基础版）',
-        desc: '使用稳定版固件',
+        desc: '定制版',
         img: `${IMG_BASE}board-carl.jpg`,
         bootselImg: `${IMG_BASE}bootsel-carl.webp`,
         chip: 'RP2350',
@@ -48,7 +48,7 @@ const BOARDS = [
     {
         id: 'pico2w',
         name: 'Pico 2 W（蓝牙）',
-        desc: '树莓派官方无线板，使用蓝牙变体固件',
+        desc: '树莓派官方无线板',
         img: `${IMG_BASE}board-pico2w.jpg`,
         bootselImg: `${IMG_BASE}bootsel-pico2w.webp`,
         chip: 'RP2350',
@@ -57,7 +57,7 @@ const BOARDS = [
     {
         id: 'waveshare',
         name: 'Waveshare 无线板（蓝牙）',
-        desc: '微雪 RP2350B-Plus W，使用 Waveshare 蓝牙变体固件',
+        desc: '微雪 RP2350B-Plus W',
         img: `${IMG_BASE}board-waveshare.jpg`,
         bootselImg: `${IMG_BASE}bootsel-waveshare.webp`,
         chip: 'RP2350',
@@ -158,12 +158,12 @@ const BACKEND_GUIDES = [
 const CHANNELS = {
     'stable': {
         label: '稳定版',
-        desc: '推荐所有用户；日常使用、没有特别说明时，始终选这个',
+        desc: '推荐日常使用',
         dot: 'dot-success',
     },
     'latest': {
         label: '最新版（调试）',
-        desc: '调试构建，仅供作者通知时刷入；不确定请选稳定版',
+        desc: '调试版本，仅在明确需要时选择',
         dot: 'dot-latest',
     },
     'stable:pico2w': {
@@ -347,8 +347,8 @@ const STEP_DEFS = {
                 <p class="wizard-lede">这个向导会带你一步步完成固件烧录：选择板型 → 进入烧录模式 → 烧录固件。</p>
                 <div class="wizard-env ${supported ? 'env-ok' : 'env-warn'}">
                     ${supported
-                        ? '✓ 当前浏览器支持 WebUSB，可以进行在线一键烧录'
-                        : '✗ 当前浏览器不支持 WebUSB（如 iOS Safari）。<br>你可以下载固件文件，通过系统 U 盘方式烧录，效果完全一样。'}
+                        ? '✓ 当前浏览器支持在线烧录'
+                        : '✗ 当前浏览器不支持在线烧录（如 iOS Safari）。<br>你可以下载固件文件，手动拷入 U 盘完成烧录。'}
                 </div>
                 ${supported ? `
                 <div class="wizard-alt">
@@ -393,7 +393,7 @@ const STEP_DEFS = {
         nextLabel: '下一步',
         html() {
             return `
-                <p class="wizard-lede">请选择你手上的板型（决定后续烧录模式引导与可用固件版本）：</p>
+                <p class="wizard-lede">请选择你手上的板型：</p>
                 <div class="wizard-board-grid">
                     ${BOARDS.map(b => `
                         <button type="button" class="wizard-board${state.board === b.id ? ' is-selected' : ''}" data-board="${b.id}">
@@ -447,7 +447,7 @@ const STEP_DEFS = {
         html() {
             const board = boardById(state.board || '');
             return `
-                <p class="wizard-lede">接下来让板子进入<b>烧录模式</b>（BOOTSEL）——这是烧录固件的前提。</p>
+                <p class="wizard-lede">接下来让板子进入<b>烧录模式</b>（BOOTSEL）。</p>
                 ${imgFrame(board?.bootselImg || '', '按键与插线动图待补充', 'wide')}
                 <ol class="wizard-steps-list">
                     <li>拔掉板子上的 USB 线（如已连接）</li>
@@ -626,7 +626,7 @@ const STEP_DEFS = {
                     <button id="wizardSaveFileBtn" class="btn btn-primary btn-flash">⬇ 下载 .uf2 固件</button>
                 </div>
                 <div id="wizardSaveFileResult"></div>
-                <p class="wizard-hint">下载的文件形如 <span class="mono">pico-hid-mapper-&lt;版本hash&gt;.uf2</span>，请留意浏览器下载提示；若没有开始下载，请检查弹窗/下载权限。</p>
+                <p class="wizard-hint">请留意浏览器的下载提示；若没有开始下载，请检查弹窗或下载权限。</p>
             `;
         },
         wire() {
@@ -866,7 +866,7 @@ function showConnectResult(result) {
     result.innerHTML = `
         <div class="wizard-connect-ok">
             <span class="ok-badge">✓ 已连接</span>
-            <span>识别到 <strong>${info.target}</strong>（${info.vidPid}，${info.product}）</span>
+            <span>识别到 <strong>${info.target}</strong>（${info.product}）</span>
         </div>
         ${mismatch ? `
         <div class="wizard-note warn">

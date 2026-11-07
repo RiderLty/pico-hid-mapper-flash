@@ -660,13 +660,13 @@ function updateFirmwareHint() {
     if (!firmwareHint) return;
 
     if (firmwareChannel === 'stable:pico2w') {
-        firmwareHint.textContent = '将烧录 Pico 2 W 蓝牙变体固件（DS5 蓝牙直连，无 Host 口），每次烧录前自动检查更新';
+        firmwareHint.textContent = '将烧录 Pico 2 W 蓝牙版固件；每次烧录前都会检查更新。';
     } else if (firmwareChannel === 'stable:waveshare_pw') {
-        firmwareHint.textContent = '将烧录 Waveshare 无线板蓝牙变体固件（DS5 蓝牙直连，无 Host 口），每次烧录前自动检查更新';
+        firmwareHint.textContent = '将烧录 Waveshare 无线板蓝牙版固件；每次烧录前都会检查更新。';
     } else if (firmwareChannel === 'latest') {
-        firmwareHint.textContent = '最新版为默认板调试构建：每次烧录前自动拉取最新构建';
+        firmwareHint.textContent = '最新版是调试版本，仅在需要时选择；每次烧录前都会获取最新构建。';
     } else {
-        firmwareHint.textContent = '将烧录稳定版固件（默认板，固件自动适配设备平台），每次烧录前自动检查更新';
+        firmwareHint.textContent = '将烧录稳定版固件；每次烧录前都会检查更新。';
     }
 }
 
@@ -1208,7 +1208,7 @@ async function eraseFlash() {
     if (busy) return;
 
     // 二次确认放在 busy=true 之前，取消时不闪禁用态
-    const ok = window.confirm('清空flash 将直接擦除整片 2MB flash：\n\n固件和所有已保存的数据都会被删除，擦除后设备保持在 BOOTSEL 模式，之后需重新烧录固件。确定继续吗？');
+    const ok = window.confirm('清空 flash 会删除固件和所有已保存的数据，设备会保持在 BOOTSEL 模式，之后需要重新烧录固件。确定继续吗？');
     if (!ok) {
         logActivity('已取消清空flash', 'info');
         return;

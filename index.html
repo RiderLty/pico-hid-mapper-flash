@@ -14,7 +14,7 @@
         <header class="header">
             <div class="header-title">
                 <h1>pico-hid-mapper⚡固件烧录</h1>
-                <p class="subtitle">在线烧录工具 · 支持 Chrome / Edge 的 WebUSB</p>
+                <p class="subtitle">在线烧录工具 · 推荐使用 Chrome / Edge</p>
             </div>
         </header>
         <button id="wizardBtn" class="btn btn-success wizard-entry-btn" type="button" data-open-wizard>📖 新手引导</button>
@@ -25,7 +25,7 @@
                 <button id="connectBtn" class="btn btn-primary">连接设备</button>
                 <span id="statusLine" class="status-line">未连接</span>
                 <a href="https://doc.rd5isto.top/webhid/" target="_blank" rel="noopener"
-                   class="btn btn-success btn-tool-link">上位机控制工具</a>
+                   class="btn btn-success btn-tool-link">浏览器控制工具</a>
             </div>
 
             <dl id="deviceInfoPanel" class="device-info hidden">
@@ -68,7 +68,7 @@
                 </div>
             </div>
 
-            <p id="firmwareHint" class="firmware-hint">将烧录稳定版固件（固件自动适配设备平台），每次烧录前自动检查更新</p>
+            <p id="firmwareHint" class="firmware-hint">将烧录稳定版固件；每次烧录前都会检查更新。</p>
 
             <div class="action-row">
                 <button id="flashBtn" class="btn btn-primary btn-flash">⚡ 烧录固件</button>
@@ -91,7 +91,7 @@
 
         <section class="card">
             <h2>用户配置</h2>
-            <p class="firmware-hint">备份/恢复 flash 尾部的用户数据区：Lua 脚本 68KB + KV 设置 128KB（共 196KB）。需在 BOOTSEL 模式下操作；导入会覆盖设备上现有的脚本和设置。</p>
+            <p class="firmware-hint">备份或恢复设备上的 Lua 脚本和设置（需在 BOOTSEL 模式下操作）。导入会覆盖设备上现有的脚本和设置。</p>
             <div class="action-row">
                 <button id="exportConfigBtn" class="btn btn-primary" type="button">导出配置</button>
                 <button id="importConfigBtn" class="btn btn-secondary" type="button">导入配置</button>
