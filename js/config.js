@@ -7,23 +7,23 @@
 //
 
 /** @type {string} 获取稳定版固件 hash 的 KV 接口地址 */
-export const FIRMWARE_STABLE_HASH_URL = 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-stable-hash';
+export const FIRMWARE_STABLE_HASH_URL = 'https://kv.rd5isto.top/v1/kv/pico-hid-mapper-stable-hash';
 
 /** @type {string} 获取 iOS 目标平台稳定版固件 hash 的 KV 接口地址（安卓稳定版沿用上面的 key） */
-export const FIRMWARE_STABLE_HASH_IOS_URL = 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-stable-hash-ios';
+export const FIRMWARE_STABLE_HASH_IOS_URL = 'https://kv.rd5isto.top/v1/kv/pico-hid-mapper-stable-hash-ios';
 
 /** @type {Object<string, string>} 蓝牙板型变体的稳定版 hash KV 接口地址（key 带板型后缀，
  *          与 build.sh 的 KV_SUFFIX 一致；默认板沿用 FIRMWARE_STABLE_HASH_URL 无后缀 key） */
 export const FIRMWARE_STABLE_HASH_BOARD_URLS = {
-    pico2w: 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-stable-hash-pico2w',
-    waveshare_pw: 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-stable-hash-waveshare_pw',
+    pico2w: 'https://kv.rd5isto.top/v1/kv/pico-hid-mapper-stable-hash-pico2w',
+    waveshare_pw: 'https://kv.rd5isto.top/v1/kv/pico-hid-mapper-stable-hash-waveshare_pw',
 };
 
 /** @type {string} 获取最新版固件 hash 的 KV 接口地址 */
-export const FIRMWARE_LATEST_HASH_URL = 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-latest-hash';
+export const FIRMWARE_LATEST_HASH_URL = 'https://kv.rd5isto.top/v1/kv/pico-hid-mapper-latest-hash';
 
 /** @type {string} 稳定版固件版本号 KV 接口地址（KV key 沿用 pico-hid-mapper-latest-version） */
-export const FIRMWARE_STABLE_VERSION_URL = 'https://kvstore.rd5isto.org/api/kv/pico-hid-mapper-latest-version';
+export const FIRMWARE_STABLE_VERSION_URL = 'https://kv.rd5isto.top/v1/kv/pico-hid-mapper-latest-version';
 
 /** @type {string[]} 固件 CDN 前缀列表：拿到 hash 后同时向所有源发起请求，
  * 取最先完整成功的那一份（见 app.js 的 fetchFastest），全部失败才报错。

@@ -785,17 +785,38 @@ function channelLabel() {
 }
 
 /**
+ * 请求 KV 接口（每次附带新的缓存规避参数），并对 429 限流做短等待重试。
+ * kv-api 对匿名请求限流 1 次/秒（burst 1）：页面在短时间内可能连发 hash 与版本号
+ * 两个请求，或多个请求共享同一出口 IP，偶发 429 时等待约 1.1 秒再试，避免误报失败。
+ * @param {string} baseUrl KV 接口地址（不要预先带缓存规避参数）
+ * @param {string} operation 超时提示里的操作名（如「获取版本」）
+ * @returns {Promise<Response>}
+ */
+async function fetchKv(baseUrl, operation) {
+    const maxAttempts = 3;
+    for (let attempt = 1; ; attempt++) {
+        const res = await withTimeout(
+            async () => fetch(addCacheBuster(baseUrl), { cache: 'no-store' }),
+            FETCH_TIMEOUT,
+            operation
+        );
+        if (res.status !== 429 || attempt >= maxAttempts) {
+            return res;
+        }
+        const retryAfterMs = (Number(res.headers.get('Retry-After')) || 0) * 1000;
+        const delayMs = Math.max(1100, retryAfterMs);
+        console.log(`${operation}：KV 接口限流（429），${delayMs}ms 后重试（${attempt}/${maxAttempts}）`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+}
+
+/**
  * 解析当前渠道对应的固件下载地址、文件名与版本 hash。
  * 先用 hash 接口取版本，再拼出**所有 CDN 源**的下载地址（多源竞速，见 fetchFastest）。
  * @returns {Promise<{urls: string[], fileName: string, hash: string}>}
  */
 async function resolveFirmwareSource() {
-    const hashUrl = addCacheBuster(getFirmwareHashUrl());
-    const hashRes = await withTimeout(
-        async () => fetch(hashUrl, { cache: 'no-store' }),
-        FETCH_TIMEOUT,
-        '获取版本'
-    );
+    const hashRes = await fetchKv(getFirmwareHashUrl(), '获取版本');
     if (!hashRes.ok) {
         throw new Error(`获取版本失败：HTTP ${hashRes.status}`);
     }
@@ -914,13 +935,8 @@ function hideWebusbModal() {
  * @returns {Promise<string|null>}
  */
 async function fetchFirmwareVersion() {
-    const url = addCacheBuster(FIRMWARE_STABLE_VERSION_URL);
     try {
-        const res = await withTimeout(
-            async () => fetch(url, { cache: 'no-store' }),
-            FETCH_TIMEOUT,
-            '获取版本号'
-        );
+        const res = await fetchKv(FIRMWARE_STABLE_VERSION_URL, '获取版本号');
         if (!res.ok) {
             return null;
         }
